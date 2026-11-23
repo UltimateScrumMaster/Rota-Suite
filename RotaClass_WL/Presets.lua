@@ -105,7 +105,8 @@ if combat() and burst() and ready("RACIAL") then return "RACIAL" end
 end
 
 -- Datos del modulo en "wl": corruption, ua, haunt, immolate, coa, cod, coe (segundos que quedan de tus DoTs),
--- shadowMastery, lifeTapBuff, decimation, moltenCore, metamorphosis, targetHealthPct, isBoss, hasPet.
+-- shadowMastery, lifeTapBuff, decimation, moltenCore, metamorphosis, shadowTrance, targetHealthPct, isBoss, hasPet,
+-- uaCast, hauntCast, sbCast, effGcd, nextFree, castRem, channeling, projLT, projSM, projCorr, projUA, projHaunt.
 
 -- Affliction (Wowhead)
 Presets.WL_AFFLICTION_PVE, Presets.WL_AFFLICTION_PVE_V1 = Preset("wl_affliction_pve", "Affliction Warlock PvE",
@@ -113,25 +114,53 @@ Presets.WL_AFFLICTION_PVE, Presets.WL_AFFLICTION_PVE_V1 = Preset("wl_affliction_
         R("aff_aoe", "SEED", "AoE: Seed of Corruption", [[
 if aoe() and known("SEED") then return "SEED" end
 ]]),
-        LifeTap("aff"),
-        ShadowMastery("aff"),
-        R("aff_corr", "CORR", "Corruption (Everlasting Affliction la renueva: solo si se cayo)", [[
-if wl.corruption <= gcd() and known("CORR") then return "CORR" end
+        R("aff_lt", "LT", "Life Tap (poco mana o buff de Glyph of Life Tap caido)", [[
+if affLifeTapNeeded() then return "LT" end
 ]]),
-        R("aff_ua", "UA", "Unstable Affliction (1.5 s de casteo: renovar antes de que caiga)", [[
-if wl.ua <= gcd() + 1.5 and known("UA") then return "UA" end
+        R("aff_sm", "SB", "Shadow Bolt para poner o renovar Shadow Mastery", [[
+if affShadowMasteryNeeded() then return "SB" end
 ]]),
-        Curse("aff", "agony"),
-        R("aff_haunt", "HAUNT", "Haunt", [[
-if wl.haunt <= gcd() + 1.5 and ready("HAUNT") then return "HAUNT" end
+        R("aff_corr", "CORR", "Corruption (si se cayo, o 1 vez <= 35% por Abrazo de la Muerte)", [[
+if affCorrNeeded() then return "CORR" end
 ]]),
-        R("aff_dsoul", "DSOUL", "Drain Soul con el objetivo debajo de 25%", [[
-if wl.targetHealthPct <= 25 and known("DSOUL") then return "DSOUL" end
+        R("aff_ua", "UA", "Unstable Affliction (renovar justo al tiempo de casteo real)", [[
+if wl.projUA <= wl.uaCast and known("UA") then
+    local pre = affBefore("UA")
+    if pre then return pre end
+    return "UA"
+end
 ]]),
-        R("aff_sb", "SB", "Shadow Bolt", [[
+        R("aff_curse", "COA", "Maldicion (var curse)", [[
+local c = affCurse("agony")
+if c then
+    local pre = affBefore(c)
+    if pre then return pre end
+    return c
+end
+]]),
+        R("aff_haunt", "HAUNT", "Poseer (casteo real + tiempo de vuelo)", [[
+if affHauntNeeded() then
+    local pre = affBefore("HAUNT")
+    if pre then return pre end
+    return "HAUNT"
+end
+]]),
+        R("aff_dsoul", "DSOUL", "Drain Soul (< 25%), protegiendo buffs y DoTs antes de canalizar", [[
+if wl.targetHealthPct <= 25 and known("DSOUL") then
+    local pre = affBefore("DSOUL")
+    if pre then return pre end
+    return "DSOUL"
+end
+]]),
+        R("aff_sb", "SB", "Shadow Bolt (relleno), protegiendo Poseer, UA y buffs", [[
+local pre = affBefore("SB")
+if pre then return pre end
 return "SB"
 ]]),
     }, { BurstOff("aff") })
+Presets.WL_AFFLICTION_PVE.vars.hauntTravel = 0.8 -- tiempo estimado de vuelo de Poseer (segundos)
+Presets.WL_AFFLICTION_PVE.vars.uaWaitMax = 0.5   -- espera maxima para renovar UA sin cortar el ultimo tick
+Presets.WL_AFFLICTION_PVE.vars.corrExecute = "boss" -- renovar Corrupcion <= 35%: "boss" (jefes), "all" (todos), "off"
 
 -- Demonology (Wowhead)
 Presets.WL_DEMONOLOGY_PVE, Presets.WL_DEMONOLOGY_PVE_V1 = Preset("wl_demonology_pve", "Demonology Warlock PvE",

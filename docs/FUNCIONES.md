@@ -57,6 +57,6 @@ Además, cada clase deja sus datos en una tabla: `pal`, `dk`, `war`, `rog`, `dru
 | Guerrero | `opWeaving()` (build Fury con Overpower), `shatteringReady()`, `spellReady("X")` |
 | Pícaro | `show("X")` (marca "esperando" si falta energía), `canAfford("X")`, `needExpose()` |
 | Druida | `catCost("X")`, `poolFor("X")`, `shredLeavesFor(segundos, "X")` |
-| Brujo | `curse(defecto)`, `lifeTapNeeded()`, `shadowMasteryNeeded()` |
+| Brujo | `curse(defecto)`, `lifeTapNeeded()`, `shadowMasteryNeeded()`, `affLifeTapNeeded()`, `affShadowMasteryNeeded()`, `affCorrNeeded()`, `affCurse(defecto)`, `affHauntNeeded()`, `affBefore("X")` |
 
 Las rotaciones v1 (antes de las reglas) quedan guardadas como `<preset>_v1`. En Opciones, la casilla "Usar la rotación vieja" las activa.

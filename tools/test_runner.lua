@@ -4827,6 +4827,200 @@ wowmock.inCombat = false
 end
 SuiteEtapa0()
 
+-- ----------------------------------------------------------------------------
+-- Brujo Affliction: proyeccion de casteo, tiempo real con celeridad y lookahead
+-- ----------------------------------------------------------------------------
+local function SuiteAfflictionLookahead()
+    print("\n[Suite] Warlock Affliction Lookahead & Casting")
+    wowmock.setClass("Warlock", "WARLOCK")
+    SetBuild("affliction")
+    RotaCore.Profiles:SetActiveProfile("wl_affliction_pve")
+    _G.RotaCoreDB.settings.aoeMode = "OFF"
+    _G.RotaCoreDB.settings.burstMode = true
+    wowmock.inCombat = true
+    wowmock.setPower("player", 0, 10000, 10000)
+    wowmock.setHealth("target", 50000, 50000)
+
+    -- Tiempos reales medidos en Frostmourne Rebuffed (14.4% celeridad)
+    wowmock.setSpellCastTime(47843, 1311) -- Unstable Affliction: 1.311s
+    wowmock.setSpellCastTime(59164, 1311) -- Haunt: 1.311s
+    wowmock.setSpellCastTime(47809, 2185) -- Shadow Bolt: 2.185s
+
+    local function eval(opts)
+        opts = opts or {}
+        wowmock.clearAuras("player")
+        wowmock.clearAuras("target")
+        wowmock.clearSpellCDs()
+        wowmock.clearCasting()
+        wowmock.gcdStart, wowmock.gcdDuration = 0, 0
+        wowmock.setHealth("target", opts.hp or 50000, 50000)
+        if opts.lt ~= false then
+            wowmock.setAura("player", { name = "Life Tap", filter = "HELPFUL", duration = opts.lt or 30 })
+        end
+        if opts.trance then
+            wowmock.setAura("player", { name = "Shadow Trance", filter = "HELPFUL", duration = 10 })
+        end
+        if opts.sm ~= false then
+            wowmock.setAura("target", { name = "Shadow Mastery", filter = "HARMFUL", duration = opts.sm or 25, unitCaster = "player" })
+        end
+        if opts.corr ~= false then
+            wowmock.setAura("target", { name = "Corruption", filter = "HARMFUL", duration = opts.corr or 15, unitCaster = "player" })
+        end
+        if opts.ua ~= false then
+            wowmock.setAura("target", { name = "Unstable Affliction", filter = "HARMFUL", duration = opts.ua or 12, unitCaster = "player" })
+        end
+        if opts.coa ~= false then
+            wowmock.setAura("target", { name = "Curse of Agony", filter = "HARMFUL", duration = opts.coa or 15, unitCaster = "player" })
+        end
+        if opts.haunt ~= false then
+            wowmock.setAura("target", { name = "Haunt", filter = "HARMFUL", duration = opts.haunt or 10, unitCaster = "player" })
+        end
+        if opts.hauntCD then wowmock.triggerSpellCD(59164, opts.hauntCD) end
+        if opts.cast then wowmock.setCasting("player", opts.cast[1], opts.cast[2], opts.cast[3]) end
+        if opts.chan then wowmock.setChanneling("player", opts.chan[1], opts.chan[2], opts.chan[3]) end
+
+        local st = RotaCore.State:Update(GetTime())
+        st.inCombat = true
+        st.isWaiting, st.waitTime, st.reason = false, nil, nil
+        local b = RotaCore.Profiles:GetActiveEvaluator()
+        return b.evaluatorMain(st), st
+    end
+
+    -- 1. UA justo al tiempo de casteo real (1.311s): renueva directo sin esperar
+    local a, st = eval({ ua = 1.25, hauntCD = 5 })
+    Assert(a == "UA" and not st.isWaiting, "Aff lookahead: UA <= 1.311s -> UA directo")
+
+    -- 2. UA a 1.6s (gap 0.29s <= 0.5s): NO sugiere Shadow Bolt de 2.185s; espera UA sin cortar el ultimo tick
+    a, st = eval({ ua = 1.6, hauntCD = 5 })
+    Assert(a == "UA" and st.isWaiting and st.waitTime > 0.2 and st.waitTime < 0.35,
+        "Aff lookahead: UA a 1.6s -> espera UA (~0.29s) en vez de Shadow Bolt")
+
+    -- 3. UA a 2.3s (gap 0.99s > 0.5s): conviene tirar Shadow Bolt completo (mas DPS que esperar 1s o clipear)
+    a, st = eval({ ua = 2.3, hauntCD = 5 })
+    Assert(a == "SB" and not st.isWaiting, "Aff lookahead: UA a 2.3s -> Shadow Bolt completo")
+
+    -- 4. Ya casteando Shadow Bolt (quedan 2.0s) con UA a 2.2s -> proyecta fin del casteo y encola UA
+    a, st = eval({ ua = 2.2, hauntCD = 5, cast = { "Shadow Bolt", 2.0, 2.185 } })
+    Assert(a == "UA" and not st.isWaiting, "Aff lookahead: casteando SB con UA a 2.2s -> proxima accion UA")
+
+    -- 5. Ya casteando UA (quedan 1.0s) con UA a 1.1s -> NO sugiere doble UA, muestra el siguiente (SB)
+    a = eval({ ua = 1.1, hauntCD = 5, cast = { "Unstable Affliction", 1.0, 1.311 } })
+    Assert(a == "SB", "Aff lookahead: casteando UA -> no pide UA de nuevo, encola SB")
+
+    -- 6. Haunt con tiempo de vuelo (0.8s): a 2.0s (<= 1.311 + 0.8) renueva directo
+    a = eval({ haunt = 2.0 })
+    Assert(a == "HAUNT", "Aff lookahead: Haunt a 2.0s (cast + vuelo) -> HAUNT")
+
+    -- 7. Haunt a 3.5s (listo) antes de Shadow Bolt (2.185s): 3.5 <= 2.185 + 1.311 + 0.8 -> renueva Haunt antes de SB
+    a = eval({ haunt = 3.5 })
+    Assert(a == "HAUNT", "Aff lookahead: Haunt a 3.5s antes de SB -> HAUNT para que no caiga")
+
+    -- 8. Ya casteando Haunt (quedan 1.0s) con Haunt a 1.5s -> NO pide Haunt de nuevo
+    a = eval({ haunt = 1.5, cast = { "Haunt", 1.0, 1.311 } })
+    Assert(a == "SB", "Aff lookahead: casteando Haunt -> no pide Haunt de nuevo")
+
+    -- 9. Life Tap buff a 1.5s antes de SB (2.185s) -> renueva Life Tap antes
+    a = eval({ lt = 1.5, hauntCD = 5 })
+    Assert(a == "LT", "Aff lookahead: Life Tap buff a 1.5s antes de SB -> LT")
+
+    -- 10. Life Tap buff a 1.0s antes de UA (1.311s) -> renueva Life Tap antes (snapshot SP)
+    a = eval({ lt = 1.0, ua = 1.2, hauntCD = 5 })
+    Assert(a == "LT", "Aff lookahead: Life Tap buff a 1.0s antes de UA -> LT")
+
+    -- 11. Erradicacion (+20% haste -> UA 1.093s) + Shadow Trance (SB instantaneo = 0ms): UA a 1.5s -> SB instantaneo
+    wowmock.setSpellCastTime(47843, 1093)
+    wowmock.setSpellCastTime(59164, 1093)
+    wowmock.setSpellCastTime(47809, 0)
+    a, st = eval({ ua = 1.5, hauntCD = 5, trance = true })
+    Assert(a == "SB" and not st.isWaiting, "Aff lookahead: SB instantaneo (Shadow Trance) con UA a 1.5s -> SB")
+
+    -- Volver a tiempos normales (14.4% haste) para fase execute (< 25%)
+    wowmock.setSpellCastTime(47843, 1311)
+    wowmock.setSpellCastTime(59164, 1311)
+    wowmock.setSpellCastTime(47809, 2185)
+
+    -- 12. Execute (< 25%) sin canalizar, Haunt a 3.5s -> renueva Haunt antes de empezar Drain Soul
+    a = eval({ hp = 10000, haunt = 3.5 })
+    Assert(a == "HAUNT", "Aff execute: Haunt a 3.5s antes de empezar Drain Soul -> HAUNT")
+
+    -- 13. Execute (< 25%) YA canalizando Drain Soul, Haunt a 3.5s -> mantiene Drain Soul
+    a = eval({ hp = 10000, haunt = 3.5, chan = { "Drain Soul", 10.0, 13.112 } })
+    Assert(a == "DSOUL", "Aff execute: ya canalizando Drain Soul con Haunt a 3.5s -> sigue DSOUL")
+
+    -- 14. Execute (< 25%) canalizando Drain Soul, UA a 1.2s -> avisa UA (para renovar tras el tick)
+    a = eval({ hp = 10000, ua = 1.2, hauntCD = 5, chan = { "Drain Soul", 10.0, 13.112 } })
+    Assert(a == "UA", "Aff execute: canalizando Drain Soul con UA a 1.2s -> UA")
+
+    -- 15. Abrazo de la Muerte (<= 35%): renovar Corrupcion 1 vez en jefe (configurable con corrExecute)
+    _G.RotaClass_WL.ResetCorrExecute()
+    wowmock.classification.target = "worldboss"
+    wowmock.targetGUID = "0xF13000000000BOSS"
+    a = eval({ hp = 18000, hauntCD = 5 }) -- 36% HP
+    Assert(a == "SB", "Aff DE: jefe a 36% con Corrupcion activa -> no renueva todavia")
+    a = eval({ hp = 17000, hauntCD = 5 }) -- 34% HP
+    Assert(a == "CORR", "Aff DE: jefe a 34% con Corrupcion activa -> renueva Corrupcion 1 vez")
+    wowmock.fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Corruption")
+    a = eval({ hp = 17000, hauntCD = 5 })
+    Assert(a == "SB", "Aff DE: ya casteada Corrupcion manual a <=35% -> no la vuelve a pedir")
+    wowmock.fireEvent("PLAYER_REGEN_ENABLED")
+    a = eval({ hp = 17000, hauntCD = 5 })
+    Assert(a == "CORR", "Aff DE: al salir de combate se limpia el registro y vuelve a pedir en otro pull")
+    wowmock.classification.target = "normal"
+    a = eval({ hp = 15000, hauntCD = 5 }) -- 30% HP mob normal con corrExecute="boss"
+    Assert(a == "SB", "Aff DE: mob normal a 30% con corrExecute='boss' -> no renueva Corrupcion")
+    RotaCore.State.data.vars.corrExecute = "all"
+    a = eval({ hp = 15000, hauntCD = 5 })
+    Assert(a == "CORR", "Aff DE: mob normal a 30% con corrExecute='all' -> renueva Corrupcion")
+    RotaCore.State.data.vars.corrExecute = "off"
+    wowmock.classification.target = "worldboss"
+    a = eval({ hp = 17000, hauntCD = 5 })
+    Assert(a == "SB", "Aff DE: jefe a 34% con corrExecute='off' -> apagado")
+    RotaCore.State.data.vars.corrExecute = "boss"
+    local prevTabs = wowmock.talents.tabs
+    wowmock.talents.tabs = {
+        [1] = { name = "Affliction", pointsSpent = 56, talents = { { name = "Abrazo de la Muerte", rank = 0 } } },
+        [2] = { name = "Demonology", pointsSpent = 15, talents = {} },
+        [3] = { name = "Destruction", pointsSpent = 0, talents = {} },
+    }
+    _G.RotaClass_WL:DetectBuild()
+    a = eval({ hp = 17000, hauntCD = 5 })
+    Assert(a == "SB", "Aff DE: sin puntos en Abrazo de la Muerte -> no pide renovar Corrupcion")
+    wowmock.talents.tabs[1].talents[1].rank = 3
+    _G.RotaClass_WL:DetectBuild()
+    a = eval({ hp = 17000, hauntCD = 5 })
+    Assert(a == "CORR", "Aff DE: con Abrazo de la Muerte 3/3 en jefe <= 35% -> renueva Corrupcion")
+    wowmock.talents.tabs = prevTabs
+    _G.RotaClass_WL:DetectBuild()
+    wowmock.classification.target = nil
+    wowmock.targetGUID = nil
+    _G.RotaClass_WL.ResetCorrExecute()
+
+    -- 16. Cero basura en 1000 evaluaciones del preset compilado con casteo activo
+    eval({ ua = 1.6, haunt = 6, hauntCD = 4, cast = { "Shadow Bolt", 1.5, 2.185 } })
+    local b = RotaCore.Profiles:GetActiveEvaluator()
+    for _ = 1, 10 do
+        local s = RotaCore.State:Update(GetTime())
+        b.evaluatorMain(s)
+    end
+    collectgarbage("collect"); collectgarbage("collect")
+    local affMemBefore = collectgarbage("count")
+    for _ = 1, 1000 do
+        local s = RotaCore.State:Update(GetTime())
+        b.evaluatorMain(s)
+    end
+    local garbage = collectgarbage("count") - affMemBefore
+    Assert(garbage == 0.0, string.format("Aff lookahead zero-alloc: %.4f KB en 1000 evals", garbage))
+
+    -- Restaurar mocks
+    wowmock.setSpellCastTime(47843, 0)
+    wowmock.setSpellCastTime(59164, 0)
+    wowmock.setSpellCastTime(47809, 0)
+    wowmock.clearCasting()
+    wowmock.inCombat = false
+    RotaCore.Profiles:SetActiveProfile("dk_unholy_morb_pve")
+end
+SuiteAfflictionLookahead()
+
 
 -- ----------------------------------------------------------------------------
 -- FINAL REPORT & EXIT

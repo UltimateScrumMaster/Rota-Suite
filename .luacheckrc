@@ -81,6 +81,8 @@ globals = {
     "UnitIsDead",
     "UnitIsDeadOrGhost",
     "UnitAffectingCombat",
+    "UnitCastingInfo",
+    "UnitChannelInfo",
 
     -- Inventory / Item APIs
     "GetInventoryItemID",
