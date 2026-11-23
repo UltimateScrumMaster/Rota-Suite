@@ -565,7 +565,7 @@ function Options:Init()
             _G.RotaCoreDB.aoeFusion = val
         end)
 
-    -- Migracion a rotaciones legibles (docs/PLAN_V2.md): grabar situaciones reales y comparar con la v1
+    -- Grabar situaciones reales (para los tests) y comparar con la rotacion vieja (RotaCore/Snapshot.lua)
     local function MakeCheck(name, text, rel, y, getCur, apply)
         local cb = _G.CreateFrame("CheckButton", name, panel)
         cb:SetSize(20, 20)

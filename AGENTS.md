@@ -27,7 +27,7 @@ GCD) y `off` (icono chico, cooldowns fuera de GCD).
 | `tools/golden.lua`, `tools/scenario.lua`, `tools/golden/` | referencias: 200 situaciones por build y lo que sugiere |
 | `docs/FUNCIONES.md` | funciones para escribir reglas |
 | `docs/REBUFFED.md` | cambios de clases del servidor respecto de WotLK original |
-| `docs/PLAN_V2.md`, `PROJECT_STATE.md` | plan de la migración y estado/historial del proyecto |
+| `PROJECT_STATE.md` | qué hace hoy el addon y qué falta |
 
 ## Cómo es una regla
 

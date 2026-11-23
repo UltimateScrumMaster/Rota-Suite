@@ -1,4 +1,4 @@
--- tools/golden.lua — Referencias de la v1 para la migración a reglas legibles (docs/PLAN_V2.md, etapa 0)
+-- tools/golden.lua — Referencias: lo que sugiere cada build en 200 situaciones, para detectar cambios no buscados
 --
 --   lua5.1 tools/golden.lua record [presetId...] [--force]   graba tools/golden/<preset>.lua (no pisa sin --force)
 --   lua5.1 tools/golden.lua check                            reproduce todas las referencias y las compara
