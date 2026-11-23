@@ -1,92 +1,66 @@
-# Guía de Usuario — Addon Rota Suite (WoW 3.3.5a)
+# Guía de uso
 
-## 1. Instalación
-1. Descarga el paquete release generado por `package.sh` (`dist/RotaSuite-v1.0.0-3.3.5a.zip`) o clona este repositorio.
-2. Copia las siguientes carpetas a tu directorio `World of Warcraft/Interface/AddOns/`:
-   - `RotaCore/` (Requerido: motor central, HUD, minimapa y panel de opciones)
-   - `RotaEditor/` (Opcional, interfaz visual interactiva y tutorial bajo demanda)
-   - `RotaClass_DK/` (Para jugar con Caballero de la Muerte)
-   - `RotaClass_PAL/` (Para jugar con Paladín)
-   - `RotaClass_WAR/` (Para jugar con Guerrero)
-   - `RotaProbe/` (Opcional, para escanear y diagnosticar servidores custom)
-3. Reinicia tu cliente WoW 3.3.5a o recarga la interfaz con `/reload`.
+## Instalar
 
----
+Copiá en `Interface/AddOns` del juego las carpetas `RotaCore`, `RotaEditor`, `RotaProbe` y la `RotaClass_*` de tu
+clase (podés copiar todas: solo se usa la de tu clase). Entrá al juego o hacé `/reload`.
 
-## 2. Métodos de Acceso y Tutoriales en el Juego
+## Qué ves en pantalla
 
-Rota Suite cuenta con 3 vías de acceso inmediato para no depender de recordar comandos de consola:
+- **Icono grande:** la próxima habilidad que conviene usar (las que pasan por el GCD).
+- **Icono chico:** cooldowns y habilidades fuera del GCD (Gárgola, Tiger's Fury, guantes, racial...).
+- **Espiral y segundos sobre el icono:** esa habilidad todavía no, pero viene (runas, energía, cooldown).
+- **Mini-barra debajo:**
+  - **Build:** la rotación que estás usando.
+  - **AoE:** AUTO cuenta los enemigos solo; ON lo fuerza; OFF lo apaga.
+  - **Burst:** si está en OFF, guarda los cooldowns largos.
+  - **Botón de la derecha:** abre las opciones.
 
-### A. Botón en el Minimapa
-Un icono circular con borde estándar de rastreo de WoW en el minimapa:
-- **Clic Izquierdo:** Abre / Cierra el **Editor Visual** (`RotaEditor`).
-- **Clic Derecho:** Abre el **Panel de Opciones y Tutorial de Blizzard** (`ESC -> Interfaz -> AddOns -> Rota Suite`).
-- **Shift + Clic:** Abre la ventana de diagnóstico **RotaProbe** (si está cargado).
-- **Arrastrar:** Haz clic y arrastra con el ratón para rotar el icono alrededor del borde del minimapa (la posición se guarda automáticamente).
+Para mover los iconos: en Opciones > Pantalla, destildá "Bloquear los iconos" y arrastralos.
 
-### B. Menú de Opciones de Blizzard (`ESC -> Interfaz -> AddOns -> Rota Suite`)
-Integración nativa con la pestaña de AddOns del juego:
-- **Estado de la Suite:** Versión, clase actual, spec y perfil activo.
-- **Acciones Rápidas:** Botones para `[Abrir Editor Visual]`, `[Escanear Sonda]`, `[Ver Sonda]` y `[Resetear Posición HUD]`.
-- **Casillas de Ajustes:**
-  - *Bloquear posición del HUD:* Permite fijar o desbloquear los iconos en pantalla para reposicionarlos.
-  - *Mostrar botón del minimapa:* Activa o desactiva la visibilidad del botón circular.
-- **Guía Rápida & Tutorial:** Resumen completo con comandos, atajos y funcionamiento.
+## Opciones
 
-### C. Pestaña 5 del Editor: Tutorial Interactivo
-Al abrir `/rc edit`, la **Pestaña 5 (Tutorial)** ofrece un manual interactivo navegable con 5 módulos:
-1. **Inicio Rápido & HUD:** Qué hace cada icono (Main vs Off-GCD) y cómo configurar el HUD.
-2. **RotaProbe (Servidores Custom):** Instrucciones paso a paso para escanear y reportar hechizos/talentos en servidores privados.
-3. **Editor de Bloques & Código:** Cómo personalizar prioridades y escribir reglas de Ovale.
-4. **Mecánicas de Clases:** Explicación técnica de runas/grace period (DK), sellos y Art of War (Paladín), y encolado On-Next-Swing / Ira (Guerrero).
-5. **Comandos Slash:** Referencia completa de consola.
+Se abren con click en el botón del minimapa, con el botón de la mini-barra o desde Interfaz > AddOns > Rota Suite.
+Es el mismo panel en los tres casos.
 
----
+| Pestaña | Qué tiene |
+|---|---|
+| Rotación | build, modo AoE, usar cooldowns largos, mostrar el motivo de cada sugerencia, editar rotación, usar la rotación vieja |
+| Pantalla | bloquear iconos, botón del minimapa, dónde va el icono de cooldowns, tamaño, volver al centro |
+| Avanzado | herramientas de diagnóstico, cómo se cuentan los enemigos, grabación para los tests |
 
-## 3. Comandos en el Chat (Slash Commands)
-- `/rc` o `/rota` — Muestra el estado del addon y comandos disponibles.
-- `/rc options` — Abre directamente el panel de opciones en la interfaz de Blizzard.
-- `/rc edit` o `/rotaedit` — Abre el Editor Visual Interactivo (Bloques / Código / Overrides / Simulador / Tutorial).
-- `/rc tutorial` o `/rc help` — Abre el Editor Visual directamente en la pestaña del Tutorial.
-- `/rc lock` — Alterna el bloqueo/desbloqueo de los iconos del HUD para moverlos con el cursor.
-- `/rc reset` — Restaura la posición de los iconos del HUD al centro de la pantalla.
-- `/rotaprobe scan` — Ejecuta un escaneo profundo de talentos y spellbook en servidores custom.
-- `/rotaprobe show` — Abre la ventana de visualización y exportación de datos de RotaProbe.
+Si la build elegida necesita un hechizo de talento que no tenés (por ejemplo UH Morb+SS sin Scourge Strike), el
+addon avisa una vez por chat al entrar en combate.
 
----
+## Editor de rotaciones
 
-## 4. Funcionamiento de los Iconos HUD
-El addon muestra dos marcos visuales optimizados (0 KB/s de memoria en combate):
-1. **Icono Principal (`mainIcon`):**
-   - Muestra la **siguiente habilidad a lanzar en Global Cooldown (GCD)**.
-   - Evalúa opener sequences (si están activas) y luego la lista de prioridad principal de arriba hacia abajo.
-2. **Icono Secundario (`offIcon`):**
-   - Muestra habilidades que están **fuera del GCD** (cooldowns de daño, mitigación) o habilidades **On-Next-Swing** (como Heroic Strike o Cleave).
-   - Incluye comprobación automática para no sugerir la habilidad si ya está en cola de ataque.
+Se abre con click derecho en el botón del minimapa o con `/rc edit`.
 
----
+- **Reglas:** la lista de la build. ON/OFF apaga una regla sin borrarla; ^ y v cambian el orden; Edit la abre.
+  El botón "Lista" cambia entre la lista principal y la de fuera del GCD.
+- **Código:** todas las reglas como texto. "Guardar cambios" las aplica; "Recargar" descarta lo no guardado.
+- **IDs de hechizos:** si en el servidor un hechizo tiene otro ID (icono gris o con otro nombre), escribí el ID
+  correcto en su fila.
+- **Ayuda:** cómo se escribe una regla y qué funciones hay (lista completa en `docs/FUNCIONES.md`).
 
-## 5. Uso del Editor Visual (`/rc edit`)
+Lo que cambies queda como rotación **Custom** de ese personaje. "Restaurar" vuelve a la rotación original.
 
-### Pestaña 1: Árbol de Bloques (Estilo TinkerCAD)
-- Permite ver todas las reglas de la rotación activa en forma de bloques legibles.
-- **Reordenar:** Usa los botones `^` (subir) y `v` (bajar) para cambiar la prioridad relativa de cada habilidad.
-- **Activar / Desactivar:** Haz clic en `[ON]` / `[OFF]` para desactivar temporalmente una regla sin borrarla.
-- **Agregar / Eliminar:** Añade nuevas reglas o elimina las obsoletas.
+## Comandos
 
-### Pestaña Código
-- Todas las reglas de la rotación como texto (`if <condición> then return "ACCION" end`).
-- **Guardar cambios:** aplica lo que escribiste. **Recargar:** descarta lo que no guardaste.
-- Funciones disponibles: `docs/FUNCIONES.md` o la pestaña Ayuda.
+| Comando | Qué hace |
+|---|---|
+| `/rc` | lista de comandos |
+| `/rc edit` | abre el editor |
+| `/rc options` | abre las opciones |
+| `/rc burst` | prende o apaga los cooldowns largos |
+| `/rc aoe` | cambia el modo AoE (AUTO / OFF / ON) |
+| `/rc build <build>` | elige la build (DK: auto, frost, morb, ums, unholy) |
+| `/rc lock` | bloquea o desbloquea los iconos |
+| `/rc reset` | vuelve a centrar los iconos |
+| `/rc aprender` | muestra el motivo de cada sugerencia |
+| `/rc status` | rotación activa y estado |
+| `/rotaprobe scan` | escanea hechizos, talentos y APIs del servidor |
 
-### Pestaña IDs de hechizos
-- Para servidores donde un hechizo tiene otro ID: escribí el ID correcto en esa fila.
-- Lo que cargues ahí tiene prioridad sobre el libro de hechizos.
+## Doble talento
 
-### Pestaña Ayuda
-- Manual interactivo integrado con navegación por tópicos explicativos.
-
----
-
-## 6. Soporte para Dual Spec
-El addon detecta automáticamente el cambio de especialización de talentos (`ACTIVE_TALENT_GROUP_CHANGED`) y cambia de perfil sin requerir recargar la interfaz ni reiniciar el juego.
+La build se guarda por personaje. Con AUTO, al cambiar de talentos el addon detecta la build nueva.

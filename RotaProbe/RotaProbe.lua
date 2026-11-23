@@ -1,5 +1,5 @@
 -- RotaProbe.lua — WoW 3.3.5a (Interface 30300) Diagnostic Probe
--- Scans APIs, Talents, Spellbook, and Glyphs to populate API_MATRIX and verify server behavior.
+-- Escanea APIs, talentos, libro de hechizos y glifos del servidor (RotaProbeDB).
 
 local ADDON_NAME = "RotaProbe"
 local DB_VERSION = 1

@@ -166,7 +166,7 @@ end
 -- MAIN & OFF PRIORITY LIST COMPILATION
 
 --- Compiles a full RotationIR profile into high-performance evaluators.
--- @param ir table RotationIR table (docs/SPEC_MAESTRO.md, seccion 3.1)
+-- @param ir table preset (formato en docs/ARCHITECTURE.md)
 -- @return table { evaluatorMain = fn(state), evaluatorOff = fn(state), resetSequences = fn() }
 --- Regla legible para los presets: R("id", "ACCION", "descripcion", [[ if ready("X") then return "X" end ]])
 function RotaCore.Rule(id, action, note, code)

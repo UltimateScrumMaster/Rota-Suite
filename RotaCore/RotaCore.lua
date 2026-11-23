@@ -788,8 +788,8 @@ local function HandleSlashCmd(msg)
     else
         if _G.DEFAULT_CHAT_FRAME and _G.DEFAULT_CHAT_FRAME.AddMessage then
             _G.DEFAULT_CHAT_FRAME:AddMessage("|cFFFFFF00[Rota Suite — Comandos]|r")
-            _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc edit|r — Abrir Editor Visual (Bloques/Código/Overrides/Sim/Tutorial)")
-            _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc options|r — Abrir Opciones & Guía Rápida en Interfaz")
+            _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc edit|r — Abrir el editor de rotaciones")
+            _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc options|r — Abrir las opciones")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burst|r — Alternar Modo Burst (CDs largos)")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burstmode <side|inline|corner>|r — Modo visual de Burst")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burstscale <10..50>|r — Tamaño del mini-icono en modo Corner")

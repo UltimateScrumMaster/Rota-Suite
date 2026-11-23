@@ -19,7 +19,7 @@ Solo lo que cambia qué apretar o cuándo. Balance puro de números no está.
 ## Guerrero
 - Improved Mortal Strike: hasta +35% de daño a Mortal Strike (antes 10%). MS antes que Overpower. **Aplicado.**
 - Sweeping Strikes: 10 cargas (antes 5). No lo disparan Whirlwind ni Bladestorm.
-- Glyph of Shattering Throw (nuevo, Minor): instantáneo, cualquier stance, no en jugadores.
+- Glyph of Shattering Throw (nuevo, Minor): instantáneo, cualquier stance, no en jugadores. **Aplicado** (Shattering Throw con Burst si tenés el glifo).
 - Titan's Grip: sin penalización de daño en T7.
 - Flurry procea también con daño en área.
 
