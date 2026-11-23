@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaClass DRU
+## Notes: Druid module for RotaCore (Balance / Feral)
+## Dependencies: RotaCore
+## Version: 1.0.0
+
+RotaClass_DRU.lua
+Presets.lua

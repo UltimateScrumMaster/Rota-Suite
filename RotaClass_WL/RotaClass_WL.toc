@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaClass WL
+## Notes: Warlock module for RotaCore (Affliction / Demonology / Destruction)
+## Dependencies: RotaCore
+## Version: 1.0.0
+
+RotaClass_WL.lua
+Presets.lua

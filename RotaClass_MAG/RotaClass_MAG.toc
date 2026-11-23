@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaClass MAG
+## Notes: Mage module for RotaCore (Arcane / Fire / Frost)
+## Dependencies: RotaCore
+## Version: 1.0.0
+
+RotaClass_MAG.lua
+Presets.lua

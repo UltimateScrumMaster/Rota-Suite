@@ -1,0 +1,5 @@
+dist/
+backups/
+.antigravity/
+*:Zone.Identifier
+.wow-addons-path

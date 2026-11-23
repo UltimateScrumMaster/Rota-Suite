@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: RotaClass_WAR
+## Notes: Warrior state provider, GCD vs On-Next-Swing engine & presets for RotaCore
+## Author: Antigravity
+## Version: 1.0.0
+## Dependencies: RotaCore
+
+RotaClass_WAR.lua
+Presets.lua

@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: RotaClass_PAL
+## Notes: Paladin state provider, FCFS Retribution engine & presets for RotaCore
+## Author: Antigravity
+## Version: 1.0.0
+## Dependencies: RotaCore
+
+RotaClass_PAL.lua
+Presets.lua

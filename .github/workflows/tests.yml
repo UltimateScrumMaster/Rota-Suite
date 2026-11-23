@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lua 5.1 y luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 luarocks
+          sudo luarocks install luacheck
+      - name: Tests
+        run: lua5.1 tools/test_runner.lua
+      - name: Referencias (misma sugerencia y cero basura por build)
+        run: lua5.1 tools/golden.lua check
+      - name: Luacheck
+        run: luacheck .

@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaClass ROG
+## Notes: Rogue module for RotaCore (Assassination / Combat / Subtlety)
+## Dependencies: RotaCore
+## Version: 1.0.0
+
+RotaClass_ROG.lua
+Presets.lua

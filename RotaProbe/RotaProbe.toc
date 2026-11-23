@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaProbe
+## Notes: Diagnostic reconnaissance probe for WoW 3.3.5a APIs, Talents, and Spellbook.
+## Author: RotaTeam
+## Version: 1.0.0
+## SavedVariables: RotaProbeDB
+
+RotaProbe.lua

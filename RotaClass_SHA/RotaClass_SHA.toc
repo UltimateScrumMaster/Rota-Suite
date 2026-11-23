@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RotaClass SHA
+## Notes: Shaman module for RotaCore (Elemental / Enhancement)
+## Dependencies: RotaCore
+## Version: 1.0.0
+
+RotaClass_SHA.lua
+Presets.lua

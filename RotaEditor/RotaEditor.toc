@@ -1,0 +1,14 @@
+## Interface: 30300
+## Title: RotaEditor
+## Notes: Visual Block Editor, Code Sync, Overrides and Live Simulator for RotaCore (LoadOnDemand)
+## Author: Antigravity
+## Version: 1.0.0
+## Dependencies: RotaCore
+## LoadOnDemand: 1
+
+FramePool.lua
+TabBlocks.lua
+TabCode.lua
+TabOverrides.lua
+TabTutorial.lua
+RotaEditor.lua

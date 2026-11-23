@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: RotaClass_DK
+## Notes: Death Knight state provider, rune engine, grace period & presets for RotaCore
+## Author: Antigravity
+## Version: 1.0.0
+## Dependencies: RotaCore
+
+RotaClass_DK.lua
+Presets.lua
