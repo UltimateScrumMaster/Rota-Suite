@@ -51,7 +51,9 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
   Si una API no está en `tools/wowmock.lua`, probablemente no existe en 3.3.5a: verificalo.
 - **Cero asignaciones en el hot path**: nada de `{}`, closures ni concatenación de strings dentro de reglas,
   providers o evaluadores. Tablas reusables a nivel de módulo. `golden.lua check` falla si una build crea basura.
-- **No editar** `tools/golden/*.lua` a mano ni regrabar referencias de builds que no cambiaste a propósito.
+- **No editar** `tools/golden/*.lua` a mano. Si cambiás lo que sugiere una build a propósito:
+  `lua5.1 tools/golden.lua update <preset>` (conserva las situaciones y lista los casos que cambiaron). No uses
+  `record --force` en builds existentes.
 - **No tocar** presets `*_v1` ni los evaluadores viejos (`Evaluate*`) de los módulos.
 - **Fuente de rotaciones**: guías de Wowhead WotLK + `docs/REBUFFED.md`.
 - Textos de UI en castellano llano.

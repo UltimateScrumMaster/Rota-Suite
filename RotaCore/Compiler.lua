@@ -83,10 +83,11 @@ Compiler.ASTToLua = ASTToLua
 
 -- RULE PRE-COMPILER
 
+-- Alias que Burst OFF guarda. "UA" no va: en el Brujo es Unstable Affliction (la Unbreakable Armor del DK ya
+-- esta marcada isBurst en su regla).
 local BURST_SPELL_ALIASES = {
     GARG = true,
     AOTD = true,
-    UA = true,
     SPEED_POT = true,
     POT = true,
     HYPER = true,
@@ -229,6 +230,14 @@ function Compiler:Compile(ir)
         end
     end
 
+    -- Pasos del opener que Burst OFF saltea: los alias de cooldowns largos, mas Unbreakable Armor por nombre
+    -- (su alias "UA" es Unstable Affliction en el Brujo)
+    local burstStep = {}
+    for alias in pairs(BURST_SPELL_ALIASES) do burstStep[alias] = true end
+    for alias, sp in pairs(ir.spells or {}) do
+        if sp.name == "Unbreakable Armor" then burstStep[alias] = true end
+    end
+
     -- 4. Sequences (Opener, etc.)
     local seq = ir.sequences and ir.sequences.opener
     local seqEnabled = seq and seq.enabled
@@ -269,7 +278,7 @@ function Compiler:Compile(ir)
             local stepAction = seqSteps[seqIndex]
             -- If Burst mode is disabled, skip long burst cooldowns in opener sequence
             -- Blood Tap (BT) is specifically NOT skipped. Also skip unlearned abilities.
-            if (state.burstMode == false and BURST_SPELL_ALIASES[stepAction] and stepAction ~= "BT")
+            if (state.burstMode == false and burstStep[stepAction] and stepAction ~= "BT")
                 or not IsActionKnown(state, stepAction) then
                 seqIndex = seqIndex + 1
             else

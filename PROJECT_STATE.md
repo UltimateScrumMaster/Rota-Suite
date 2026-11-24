@@ -59,14 +59,14 @@ DK y Paladín se juegan en el servidor. El resto de las clases sigue las guías 
 
 Todo se verifica offline, sin el juego (el CI de GitHub lo corre en cada PR):
 
-- `lua5.1 tools/test_runner.lua`: 907 tests.
+- `lua5.1 tools/test_runner.lua`: 933 tests.
 - `lua5.1 tools/golden.lua check`: cada build se compara con su referencia (200 situaciones: un tercio de un
   objetivo, un tercio con 2 enemigos y un tercio AoE) y se mide que no cree basura en memoria a 20 evaluaciones por
   segundo.
 - `luacheck .`: sin advertencias.
 
-Cuando un cambio modifica a propósito lo que sugiere una build, se regraba solo esa referencia
-(`lua5.1 tools/golden.lua record <preset> --force`).
+Cuando un cambio modifica a propósito lo que sugiere una build, se actualiza solo esa referencia con
+`lua5.1 tools/golden.lua update <preset>`: conserva las situaciones y lista los casos que cambiaron.
 
 ## Pendiente
 

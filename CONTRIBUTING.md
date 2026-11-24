@@ -17,8 +17,10 @@ Abrí un issue con la plantilla **Rotación**. Lo más útil:
    Funciones disponibles: `docs/FUNCIONES.md`.
 2. Fuente: guías de **Wowhead WotLK** + `docs/REBUFFED.md`. No se toman rotaciones de otras fuentes sin acuerdo.
 3. Si tu cambio hace que la build sugiera otra cosa, `lua5.1 tools/golden.lua check` lo va a marcar. Eso es lo
-   esperado: regrabá **solo esa build** con `lua5.1 tools/golden.lua record <preset_id> --force` y explicá en el PR
-   por qué cambia (con la fuente). Nunca edites `tools/golden/*.lua` a mano.
+   esperado: actualizá **solo esa build** con `lua5.1 tools/golden.lua update <preset_id>`. Conserva las 200
+   situaciones y lista los casos que cambiaron: pegá esa lista en el PR y explicá por qué cambian (con la fuente).
+   `record --force` genera situaciones nuevas y no deja ver qué cambió: solo para builds nuevas.
+   Nunca edites `tools/golden/*.lua` a mano.
 4. Agregá un test en `tools/test_runner.lua` con la situación que motivó el cambio.
 
 ## Reglas para todo PR

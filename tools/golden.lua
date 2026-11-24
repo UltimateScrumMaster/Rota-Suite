@@ -1,6 +1,9 @@
 -- tools/golden.lua — Referencias: lo que sugiere cada build en 200 situaciones, para detectar cambios no buscados
 --
---   lua5.1 tools/golden.lua record [presetId...] [--force]   graba tools/golden/<preset>.lua (no pisa sin --force)
+--   lua5.1 tools/golden.lua update <presetId...>             conserva las situaciones y recalcula lo esperado de esas
+--                                                            builds; lista los casos que cambiaron (usar al modificar
+--                                                            una rotacion a proposito)
+--   lua5.1 tools/golden.lua record [presetId...] [--force]   genera situaciones nuevas (solo para builds nuevas)
 --   lua5.1 tools/golden.lua check                            reproduce todas las referencias y las compara
 --   lua5.1 tools/golden.lua import <WTF/.../RotaCore.lua>    suma lo grabado en el juego a tools/golden/real/
 --
@@ -370,13 +373,22 @@ local function Fill(ids)
     for _, path in ipairs(ListFiles(DIR)) do
         local cases = ReadCases(path)
         local id = cases[1] and cases[1].preset
+        local changed = 0
         for i, sc in ipairs(cases) do
             local main, off, wait = Run(sc, i)
-            if want[id] then sc.main, sc.off, sc.wait = main, off, wait end
+            if want[id] then
+                local before = string.format("%s / %s%s", tostring(sc.main), tostring(sc.off), sc.wait and " (espera)" or "")
+                local after = string.format("%s / %s%s", tostring(main), tostring(off), wait and " (espera)" or "")
+                if sc.main ~= nil and before ~= after then
+                    changed = changed + 1
+                    if changed <= 15 then print(string.format("    caso %d: %s  ->  %s", i, before, after)) end
+                end
+                sc.main, sc.off, sc.wait = main, off, wait
+            end
         end
         if want[id] then
             WriteCases(path, id, cases)
-            print(string.format("  %s: %d casos grabados", id, #cases))
+            print(string.format("  %s: %d casos grabados, %d cambiaron", id, #cases, changed))
         end
     end
 end
@@ -474,12 +486,12 @@ local rest = {}
 for i = 2, #arg do rest[#rest + 1] = arg[i] end
 if cmd == "record" then
     Record(rest)
-elseif cmd == "fill" then
+elseif cmd == "fill" or cmd == "update" then
     Fill(rest)
 elseif cmd == "check" then
     if not Check() then os.exit(1) end
 elseif cmd == "import" then
     Import(rest[1])
 else
-    print("uso: lua5.1 tools/golden.lua record [presetId...] [--force] | check | import <RotaCore.lua>")
+    print("uso: lua5.1 tools/golden.lua update <presetId...> | check | record [presetId...] [--force] | import <RotaCore.lua>")
 end

@@ -1475,6 +1475,7 @@ burstFrostEval.resetSequences()
 -- With burstMode = false, if we skip burst actions, verify that burst actions are bypassed
 local testSeqIR = {
     meta = { id = "burst_test", class = "DEATHKNIGHT" },
+    spells = { UA = { name = "Unbreakable Armor", defaultId = 51271 } },
     sequences = {
         opener = {
             enabled = true,
@@ -4808,6 +4809,20 @@ RotaCore.CheckRequires(fakeIR, fakeState)
 _G.DEFAULT_CHAT_FRAME.AddMessage = oldAdd
 Assert(#said == 1 and said[1]:find("Scourge Strike", 1, true) and not said[1]:find("Icy Touch", 1, true),
     "Falta un talento de la build: avisa una vez y nombra solo lo que falta")
+
+-- Burst OFF no saltea Unstable Affliction del Brujo (alias "UA", igual que Unbreakable Armor del DK)
+do
+    local ua = { meta = { id = "burst_ua_test", class = "WARLOCK" }, spells = { UA = { name = "Unstable Affliction" } },
+        lists = { main = { RotaCore.Rule("r", "UA", "UA", "return 'UA'") },
+            off = { { id = "dk_ua", enabled = true, isBurst = true, type = "customLua", action = "UA", code = "return 'UA'" } } } }
+    local b = RotaCore.Compiler:Compile(ua)
+    local sd = RotaCore.State.data
+    local oldBurst, oldHas = sd.burstMode, sd.hasSpell
+    sd.burstMode, sd.hasSpell = false, function() return true end
+    Assert(b.evaluatorMain(sd) == "UA", "Burst OFF: la regla de Unstable Affliction sigue sugiriendo UA")
+    Assert(b.evaluatorOff(sd) == nil, "Burst OFF: una regla marcada isBurst (Unbreakable Armor) se guarda")
+    sd.burstMode, sd.hasSpell = oldBurst, oldHas
+end
 
 -- Panel unico con pestanas: cada control vive en una sola pagina
 local panel = RotaCore.Options and RotaCore.Options.panel

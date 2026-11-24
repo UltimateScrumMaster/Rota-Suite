@@ -9,6 +9,6 @@
 ## Checklist
 
 - [ ] `lua5.1 tools/test_runner.lua`, `lua5.1 tools/golden.lua check` y `luacheck .` pasan
-- [ ] Si regrabé referencias: solo las builds que cambié a propósito (`record <preset> --force`), explicado arriba
+- [ ] Si cambió lo que sugiere una build: `lua5.1 tools/golden.lua update <preset>` solo de esa build, con la lista de casos que cambiaron pegada arriba
 - [ ] Agregué un test con la situación que motivó el cambio
 - [ ] Sin dependencias nuevas, sin datos personales, textos en castellano llano
