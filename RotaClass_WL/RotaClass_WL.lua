@@ -27,14 +27,23 @@ local SPELLS = {
     SFURY = { "Shadowfury", 47847 },
 }
 
--- Nombres localizados de auras
+-- Nombres localizados de auras y hechizos (para comparar con UnitBuff/UnitDebuff/UnitCastingInfo)
 local NAME = {
     HAUNT = SN(59164, "Haunt"),             CORR = SN(47813, "Corruption"),       UA = SN(47843, "Unstable Affliction"),
     COA = SN(47864, "Curse of Agony"),      COD = SN(47867, "Curse of Doom"),     COE = SN(47865, "Curse of the Elements"),
     IMM = SN(47811, "Immolate"),            LTBUFF = SN(63321, "Life Tap"),       MOLTEN = SN(71165, "Molten Core"),
     DECI = SN(63167, "Decimation"),         META = SN(47241, "Metamorphosis"),    BACKDRAFT = SN(54277, "Backdraft"),
-    SHADOWM = SN(17800, "Shadow Mastery"),
+    SHADOWM = SN(17800, "Shadow Mastery"),  SB = SN(47809, "Shadow Bolt"),        DSOUL = SN(47855, "Drain Soul"),
+    STRANCE = SN(17941, "Shadow Trance"),
 }
+
+-- Tiempo de casteo real en segundos desde GetSpellInfo (refleja celeridad y procs en 3.3.5a; 0 si instantaneo o mock)
+local function SpellCastSec(id)
+    if not _G.GetSpellInfo then return 0 end
+    local _, _, _, _, _, _, ct = _G.GetSpellInfo(id)
+    if ct and ct > 0 then return ct / 1000 end
+    return 0
+end
 
 local function WlHas(state, alias)
     if state and state.hasSpell then
@@ -74,23 +83,54 @@ local function Var(state, name, default)
     return v
 end
 
--- Talentos: puntos por arbol (1 Affliction, 2 Demonology, 3 Destruction)
+-- Talentos: puntos por arbol (1 Affliction, 2 Demonology, 3 Destruction) y Abrazo de la Muerte
 local tabPoints = { 0, 0, 0 }
+local hasDeathsEmbrace = nil -- nil = talentos sin nombres reales (mock); true/false = escaneado
+local corrExecGUIDs = {}     -- [targetGUID] = true si ya se casteo Corrupcion manual con objetivo <= 35%
+
 local function ScanTalents()
     tabPoints[1], tabPoints[2], tabPoints[3] = 0, 0, 0
+    local foundDE = nil
     if not _G.GetTalentInfo then return end
     for tab = 1, 3 do
         local sum = 0
         local n = (_G.GetNumTalents and _G.GetNumTalents(tab)) or 0
         for idx = 1, n do
-            local _, _, _, _, rank = _G.GetTalentInfo(tab, idx)
+            local name, _, _, _, rank = _G.GetTalentInfo(tab, idx)
             sum = sum + (rank or 0)
+            if tab == 1 and name then
+                local lower = string.lower(name)
+                if lower:find("death's embrace", 1, true) or lower:find("abrazo de la muerte", 1, true) then
+                    foundDE = (rank or 0) > 0
+                end
+            end
         end
         if _G.GetTalentTabInfo then
             local _, _, spent = _G.GetTalentTabInfo(tab)
             if type(spent) == "number" and spent > sum then sum = spent end
         end
         tabPoints[tab] = sum
+    end
+    hasDeathsEmbrace = foundDE
+end
+
+function RotaClass_WL.ResetCorrExecute()
+    for k in pairs(corrExecGUIDs) do corrExecGUIDs[k] = nil end
+end
+
+local function OnSpellcastSucceeded(unit, spellName)
+    if unit ~= "player" or spellName ~= NAME.CORR then return end
+    local guid = _G.UnitGUID and _G.UnitGUID("target")
+    if not guid then return end
+    local hp = 100
+    if _G.UnitHealth and _G.UnitHealthMax then
+        local mx = _G.UnitHealthMax("target") or 0
+        if mx > 0 then hp = (_G.UnitHealth("target") or 0) / mx * 100 end
+    end
+    if hp <= 35 then
+        corrExecGUIDs[guid] = true
+    else
+        corrExecGUIDs[guid] = nil
     end
 end
 
@@ -103,7 +143,7 @@ local function UpdateWarlockState(state, _)
     end
     local now = state.now or (_G.GetTime and _G.GetTime()) or 0
 
-    local lt, molten, deci, meta, bd = 0, 0, 0, 0, 0
+    local lt, molten, deci, meta, bd, trance = 0, 0, 0, 0, 0, 0
     if _G.UnitBuff then
         for i = 1, 40 do
             local name, _, _, _, _, _, expT = _G.UnitBuff("player", i)
@@ -114,10 +154,12 @@ local function UpdateWarlockState(state, _)
             elseif name == NAME.MOLTEN then molten = rem
             elseif name == NAME.DECI then deci = rem
             elseif name == NAME.META then meta = rem
-            elseif name == NAME.BACKDRAFT then bd = rem end
+            elseif name == NAME.BACKDRAFT then bd = rem
+            elseif name == NAME.STRANCE then trance = rem end
         end
     end
     wl.lifeTapBuff, wl.moltenCore, wl.decimation, wl.metamorphosis, wl.backdraft = lt, molten, deci, meta, bd
+    wl.shadowTrance = trance
 
     -- DoTs propios; Curse of the Elements cuenta de cualquiera (un solo debuff por objetivo)
     local haunt, corr, ua, coa, cod, coe, imm, sm = 0, 0, 0, 0, 0, 0, 0, 0
@@ -151,6 +193,66 @@ local function UpdateWarlockState(state, _)
     wl.targetHealthPct = hp
     wl.isBoss = (_G.UnitClassification and _G.UnitClassification("target") == "worldboss") and true or false
     wl.hasPet = (_G.UnitExists and _G.UnitExists("pet")) and true or false
+    local tGuid = (_G.UnitGUID and state.hasTarget ~= false) and _G.UnitGUID("target") or nil
+    if tGuid and corr <= 0 and corrExecGUIDs[tGuid] then
+        corrExecGUIDs[tGuid] = nil
+    end
+    wl.corrExecDone = (tGuid and corrExecGUIDs[tGuid]) and true or false
+
+    -- Casteo / canalizacion en curso (UnitCastingInfo / UnitChannelInfo en 3.3.5a: tiempos en ms)
+    local castName, castRem = nil, 0
+    if _G.UnitCastingInfo then
+        local cName, _, _, _, _, endMs = _G.UnitCastingInfo("player")
+        if cName and endMs then
+            castName = cName
+            castRem = (endMs / 1000) - now
+            if castRem < 0 then castRem = 0 end
+        end
+    end
+    local channeling, chanName = false, nil
+    if not castName and _G.UnitChannelInfo then
+        local hName, _, _, _, _, endMs = _G.UnitChannelInfo("player")
+        if hName and endMs and (endMs / 1000) > now then
+            channeling = true
+            chanName = hName
+        end
+    end
+    wl.castName, wl.castRem = castName, castRem
+    wl.channeling, wl.chanName = channeling, chanName
+
+    -- Tiempos de casteo reales con celeridad y procs (fallback a base si GetSpellInfo no devuelve castTime)
+    local ctUA = SpellCastSec(47843)
+    local ctHaunt = SpellCastSec(59164)
+    local ctSB = SpellCastSec(47809)
+    if ctUA <= 0 then
+        ctUA = 1.5
+        if ctHaunt <= 0 then ctHaunt = 1.5 end
+        if ctSB <= 0 then ctSB = (trance > 0) and 0 or 2.5 end
+    else
+        if ctHaunt <= 0 then ctHaunt = ctUA end
+    end
+    local effGcd = (state.gcdDuration and state.gcdDuration > 0) and state.gcdDuration or ctUA
+    if effGcd < 1.0 then effGcd = 1.0 elseif effGcd > 1.5 then effGcd = 1.5 end
+    wl.uaCast, wl.hauntCast, wl.sbCast, wl.effGcd = ctUA, ctHaunt, ctSB, effGcd
+
+    -- Proyeccion al final del casteo/GCD actual (en canalizacion no se proyecta el canal entero)
+    local t0 = state.gcdRemains or 0
+    if castRem > t0 then t0 = castRem end
+    wl.nextFree = t0
+
+    local castingUA = (castName == NAME.UA)
+    local castingHaunt = (castName == NAME.HAUNT)
+    local castingSB = (castName == NAME.SB)
+    wl.castingUA, wl.castingHaunt, wl.castingSB = castingUA, castingHaunt, castingSB
+
+    wl.projLT = (lt > t0) and (lt - t0) or 0
+    wl.projSM = castingSB and 30 or ((sm > t0) and (sm - t0) or 0)
+    wl.projCorr = ((castingSB or castingHaunt) and corr > t0) and 18 or ((corr > t0) and (corr - t0) or 0)
+    wl.projUA = castingUA and 15 or ((ua > t0) and (ua - t0) or 0)
+    wl.projCoa = (coa > t0) and (coa - t0) or 0
+    wl.projCod = (cod > t0) and (cod - t0) or 0
+    wl.projCoe = (coe > t0) and (coe - t0) or 0
+    wl.projHaunt = castingHaunt and 12 or ((haunt > t0) and (haunt - t0) or 0)
 end
 
 -- Maldicion a mantener. var curse: "auto" (Doom en bosses, Agony en el resto), "doom", "agony", "elements"
@@ -322,6 +424,115 @@ function RotaClass_WL:DetectBuild()
     return key, active, b[2]
 end
 
+-- Helpers de Affliction con proyeccion de casteo, tiempo real con celeridad y tiempo de vuelo de Poseer
+local function AffReadyAt(state, wl, alias)
+    if not WlHas(state, alias) then return false end
+    if alias == "HAUNT" and wl.castingHaunt then return false end
+    local cd = Cd(state, alias)
+    if cd ~= nil then return cd <= (wl.nextFree or 0) + 0.1 end
+    return (state.spellReady and state.spellReady(alias)) and true or false
+end
+
+local function AffLifeTapNeeded(state, wl)
+    if not WlHas(state, "LT") then return false end
+    if (state.powerPct or 100) < Var(state, "lifeTapMana", 15) then return true end
+    return Var(state, "glyphLifeTap", 1) == 1 and state.inCombat and wl.projLT <= 0
+end
+
+local function AffShadowMasteryNeeded(state, wl)
+    return Var(state, "shadowMastery", 1) == 1 and wl.projSM <= (wl.sbCast or 2.5) + 0.5
+        and WlHas(state, "SB")
+end
+
+-- Corrupcion en Affliction: si se cayo, o 1 vez manual al <= 35% para congelar Abrazo de la Muerte (+12%)
+-- var corrExecute: "boss" (solo jefes, por defecto), "all" (todos los objetivos), "off" (apagado)
+local function AffCorrNeeded(state, wl)
+    if not WlHas(state, "CORR") then return false end
+    if wl.projCorr <= 0 then return true end
+    if wl.corrExecDone or hasDeathsEmbrace == false then return false end
+    if wl.targetHealthPct > 35 then return false end
+    local mode = Var(state, "corrExecute", "boss")
+    if mode == "off" or mode == 0 or mode == false then return false end
+    if mode == "all" or wl.isBoss then
+        state.reason = "Renovar Corrupcion <= 35% (Abrazo de la Muerte +12%)"
+        return true
+    end
+    return false
+end
+
+local function AffCurseNeeded(state, wl, defaultCurse)
+    local curse = Var(state, "curse", defaultCurse)
+    if curse == "elements" then
+        if wl.projCoe <= 0 and WlHas(state, "COE") then return "COE" end
+        return nil
+    end
+    if curse == "auto" then curse = wl.isBoss and "doom" or "agony" end
+    if curse == "doom" and WlHas(state, "COD") then
+        if wl.projCod <= 0 and AffReadyAt(state, wl, "COD") then return "COD" end
+        return nil
+    end
+    if wl.projCoa <= 0 and WlHas(state, "COA") then return "COA" end
+    return nil
+end
+
+local function AffHauntNeeded(state, wl)
+    local travel = Var(state, "hauntTravel", 0.8)
+    return wl.projHaunt <= (wl.hauntCast or 1.5) + travel and AffReadyAt(state, wl, "HAUNT")
+end
+
+-- Revisa antes de castear `candidate` si su duracion haria caer algo de mayor prioridad.
+-- Debuffs sin ticks (Life Tap, Shadow Mastery, Poseer): se renuevan antes.
+-- UA (DoT con ticks, sin Pandemic en 3.3.5a): nunca se corta el ultimo tick; si falta poco (<= uaWaitMax), espera.
+local function AffBefore(state, wl, candidate)
+    if candidate == "DSOUL" and wl.channeling and wl.chanName == NAME.DSOUL then
+        return nil
+    end
+    local g = wl.effGcd or 1.5
+    local dur = g
+    local isFiller = false
+    if candidate == "UA" then
+        dur = (wl.uaCast and wl.uaCast > g) and wl.uaCast or g
+    elseif candidate == "HAUNT" then
+        dur = (wl.hauntCast and wl.hauntCast > g) and wl.hauntCast or g
+    elseif candidate == "SB" then
+        dur = (wl.sbCast and wl.sbCast > g) and wl.sbCast or g
+        isFiller = true
+    elseif candidate == "DSOUL" then
+        dur = (wl.uaCast or 1.5) * 2
+        isFiller = true
+    end
+
+    if Var(state, "glyphLifeTap", 1) == 1 and state.inCombat and WlHas(state, "LT") and wl.projLT <= dur then
+        state.reason = "Renovar Life Tap antes de castear"
+        return "LT"
+    end
+    if candidate ~= "UA" and candidate ~= "SB" and Var(state, "shadowMastery", 1) == 1
+        and WlHas(state, "SB") and wl.projSM <= dur + (wl.sbCast or 2.5) then
+        state.reason = "Renovar Shadow Mastery antes de castear"
+        return "SB"
+    end
+    if isFiller then
+        local travel = Var(state, "hauntTravel", 0.8)
+        if AffReadyAt(state, wl, "HAUNT") and wl.projHaunt <= dur + (wl.hauntCast or 1.5) + travel then
+            state.reason = "Renovar Poseer antes de rellenar"
+            return "HAUNT"
+        end
+        local uaCast = wl.uaCast or 1.5
+        local uaGap = wl.projUA - uaCast
+        local maxWait = Var(state, "uaWaitMax", 0.5)
+        if candidate == "SB" and (wl.sbCast or 0) <= 0 and maxWait > 0.25 then
+            maxWait = 0.25
+        end
+        if WlHas(state, "UA") and uaGap > 0 and uaGap <= maxWait then
+            state.isWaiting = true
+            state.waitTime = (wl.nextFree or 0) + uaGap
+            state.reason = "Esperar para renovar UA sin cortar el ultimo tick"
+            return "UA"
+        end
+    end
+    return nil
+end
+
 -- Funciones del Brujo para las reglas del preset (ver RotaClass_WL/Presets.lua)
 if RotaCore.Sandbox and RotaCore.Sandbox.AddHelper then
     local Sandbox = RotaCore.Sandbox
@@ -339,6 +550,31 @@ if RotaCore.Sandbox and RotaCore.Sandbox.AddHelper then
     Sandbox:AddHelper("shadowMasteryNeeded", function()
         local st = Sandbox.current
         return ShadowMasteryNeeded(st, st.wl)
+    end)
+    --- versiones con proyeccion de casteo y lookahead para Affliction
+    Sandbox:AddHelper("affLifeTapNeeded", function()
+        local st = Sandbox.current
+        return AffLifeTapNeeded(st, st.wl)
+    end)
+    Sandbox:AddHelper("affShadowMasteryNeeded", function()
+        local st = Sandbox.current
+        return AffShadowMasteryNeeded(st, st.wl)
+    end)
+    Sandbox:AddHelper("affCorrNeeded", function()
+        local st = Sandbox.current
+        return AffCorrNeeded(st, st.wl)
+    end)
+    Sandbox:AddHelper("affCurse", function(default)
+        local st = Sandbox.current
+        return AffCurseNeeded(st, st.wl, default)
+    end)
+    Sandbox:AddHelper("affHauntNeeded", function()
+        local st = Sandbox.current
+        return AffHauntNeeded(st, st.wl)
+    end)
+    Sandbox:AddHelper("affBefore", function(candidate)
+        local st = Sandbox.current
+        return AffBefore(st, st.wl, candidate)
     end)
 end
 
@@ -372,7 +608,17 @@ if _G.CreateFrame and not RotaClass_WL.eventFrame then
     f:RegisterEvent("PLAYER_TALENT_UPDATE")
     f:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     f:RegisterEvent("CHARACTER_POINTS_CHANGED")
-    f:SetScript("OnEvent", function() RotaClass_WL:DetectBuild() end)
+    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function(_, event, unit, spellName)
+        if event == "UNIT_SPELLCAST_SUCCEEDED" then
+            OnSpellcastSucceeded(unit, spellName)
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            RotaClass_WL.ResetCorrExecute()
+        else
+            RotaClass_WL:DetectBuild()
+        end
+    end)
     RotaClass_WL.eventFrame = f
 end
 

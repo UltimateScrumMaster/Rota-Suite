@@ -324,7 +324,7 @@ function wowmock.addSpellBookItem(slot, spellId)
     wowmock.spellbook.spells[slot] = spellId
 end
 
-function wowmock.registerSpell(id, name, rank, icon, cdDuration, isRanged)
+function wowmock.registerSpell(id, name, rank, icon, cdDuration, isRanged, castTime)
     local entry = {
         id = id,
         name = name,
@@ -333,9 +333,15 @@ function wowmock.registerSpell(id, name, rank, icon, cdDuration, isRanged)
         cdDuration = cdDuration or 0,
         cdStart = 0,
         isRanged = isRanged or false,
+        castTime = castTime or 0,
     }
     wowmock.spells[id] = entry
     wowmock.spells[name] = entry
+end
+
+function wowmock.setSpellCastTime(nameOrId, castTimeMs)
+    local s = wowmock.spells[nameOrId]
+    if s then s.castTime = castTimeMs or 0 end
 end
 
 function wowmock.triggerSpellCD(nameOrId, duration)
@@ -362,7 +368,7 @@ end
 function wowmock.getSpellInfo(nameOrId)
     local s = wowmock.spells[nameOrId]
     if s then
-        return s.name, s.rank, s.icon, 0, false, 0, 0, (s.isRanged and 0 or nil), (s.isRanged and 30 or nil)
+        return s.name, s.rank, s.icon, 0, false, 0, s.castTime or 0, (s.isRanged and 0 or nil), (s.isRanged and 30 or nil)
     end
     return tostring(nameOrId), "", "Interface\\Icons\\Spell_Nature_BloodLust", 0, false, 0, 0, nil, nil
 end
@@ -1025,6 +1031,43 @@ function wowmock.init()
     end
     _G.UnitHealth = function(unit) return wowmock.health[unit] or 10000 end
     _G.UnitHealthMax = function(unit) return wowmock.maxHealth[unit] or 10000 end
+    wowmock.casting = {}
+    wowmock.channeling = {}
+    function wowmock.setCasting(unit, name, remSec, durSec)
+        local d = durSec or remSec or 0
+        local endMs = (wowmock.now + (remSec or 0)) * 1000
+        local startMs = endMs - (d * 1000)
+        wowmock.casting[unit] = name and { name = name, startMs = startMs, endMs = endMs } or nil
+    end
+    function wowmock.setChanneling(unit, name, remSec, durSec)
+        local d = durSec or remSec or 0
+        local endMs = (wowmock.now + (remSec or 0)) * 1000
+        local startMs = endMs - (d * 1000)
+        wowmock.channeling[unit] = name and { name = name, startMs = startMs, endMs = endMs } or nil
+    end
+    function wowmock.clearCasting(unit)
+        if unit then
+            wowmock.casting[unit] = nil
+            wowmock.channeling[unit] = nil
+        else
+            wowmock.casting = {}
+            wowmock.channeling = {}
+        end
+    end
+    _G.UnitCastingInfo = function(unit)
+        local c = wowmock.casting and wowmock.casting[unit]
+        if c and (c.endMs / 1000) > wowmock.now then
+            return c.name, "", c.name, "", c.startMs, c.endMs, false, 1, false
+        end
+        return nil
+    end
+    _G.UnitChannelInfo = function(unit)
+        local c = wowmock.channeling and wowmock.channeling[unit]
+        if c and (c.endMs / 1000) > wowmock.now then
+            return c.name, "", c.name, "", c.startMs, c.endMs, false
+        end
+        return nil
+    end
     _G.IsCurrentSpell = function(nameOrId)
         return (wowmock.currentSpells[nameOrId] and 1) or nil
     end
