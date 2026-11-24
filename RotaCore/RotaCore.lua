@@ -398,6 +398,13 @@ local function HandleSlashCmd(msg)
                 RotaCore.UI:CycleBuild()
             end
         end
+    elseif cmd == "prepull" then
+        local Prepull = RotaCore.Prepull
+        if Prepull and Prepull:Available() then
+            if Prepull.armed then Prepull:Disarm("cancel") else Prepull:Arm() end
+        elseif _G.DEFAULT_CHAT_FRAME and _G.DEFAULT_CHAT_FRAME.AddMessage then
+            _G.DEFAULT_CHAT_FRAME:AddMessage("|cFFFFAA00[RotaCore]|r Esta build no tiene rotación de pre-pull.")
+        end
     elseif cmd == "options" or cmd == "help" or cmd == "tutorial" then
         if _G.InterfaceOptionsFrame_OpenToCategory and RotaCore.optionsPanel then
             _G.InterfaceOptionsFrame_OpenToCategory(RotaCore.optionsPanel)
@@ -790,6 +797,7 @@ local function HandleSlashCmd(msg)
             _G.DEFAULT_CHAT_FRAME:AddMessage("|cFFFFFF00[Rota Suite — Comandos]|r")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc edit|r — Abrir el editor de rotaciones")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc options|r — Abrir las opciones")
+            _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc prepull|r — Armar o cancelar el pre-pull (sirve en una macro)")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burst|r — Alternar Modo Burst (CDs largos)")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burstmode <side|inline|corner>|r — Modo visual de Burst")
             _G.DEFAULT_CHAT_FRAME:AddMessage("  |cFFFFFFFF/rc burstscale <10..50>|r — Tamaño del mini-icono en modo Corner")
@@ -1038,6 +1046,10 @@ function RotaCore:Init()
     if RotaCore.Options and RotaCore.Options.Init then
         pcall(function() RotaCore.Options:Init() end)
     end
+
+    if RotaCore.Prepull and RotaCore.Prepull.Init then
+        pcall(function() RotaCore.Prepull:Init() end)
+    end
 end
 
 -- Builds elegidas sin un hechizo de talento que necesitan (meta.requires): aviso una vez por build y sesion
@@ -1088,7 +1100,10 @@ function RotaCore:UpdateAndEvaluate(now)
         state.isWaiting = false
         state.reason = nil
         state.waitTime = nil
-        if evalBundle.evaluatorMain then
+        -- Pre-Pull armado: el icono grande muestra la lista prepull hasta el pull (RotaCore/Prepull.lua)
+        local Prepull = RotaCore.Prepull
+        if Prepull and Prepull.armed then mainAction = Prepull:Evaluate(state, evalBundle) end
+        if not mainAction and evalBundle.evaluatorMain then
             mainAction = evalBundle.evaluatorMain(state)
         end
         if evalBundle.evaluatorOff then
@@ -1096,6 +1111,7 @@ function RotaCore:UpdateAndEvaluate(now)
         end
     end
 
+    if RotaCore.Prepull then RotaCore.Prepull:Tick(state) end
     RotaCore.lastMainAction = mainAction
     RotaCore.lastOffAction = offAction
     if RotaCore.Snapshot then RotaCore.Snapshot:AfterEvaluate(state, mainAction, offAction) end

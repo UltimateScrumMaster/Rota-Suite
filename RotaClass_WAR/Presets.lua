@@ -772,7 +772,7 @@ end
 }
 local FURY_OFF = {
     R("fury_shattering", "SHATTERING", "Shattering Throw (Glyph de Rebuffed)", [[
-if shatteringReady() then return "SHATTERING" end
+if glyphOn("shattering") and shatteringReady() then return "SHATTERING" end
 ]]),
     R("fury_swing", "HS", "Heroic Strike (Cleave en AoE) con ira de sobra", [[
 if not war.isNextSwingQueued then
@@ -838,7 +838,7 @@ if not aoe() and known("SLAM") and war.rage >= 15 then return "SLAM" end
 }
 local ARMS_OFF = {
     R("arms_shattering", "SHATTERING", "Shattering Throw (Glyph de Rebuffed)", [[
-if shatteringReady() then return "SHATTERING" end
+if glyphOn("shattering") and shatteringReady() then return "SHATTERING" end
 ]]),
     R("arms_sw", "SW", "AoE: Sweeping Strikes", [[
 if aoe() and known("SW") and spellReady("SW") and war.rage >= 30 then return "SW" end
@@ -866,6 +866,22 @@ end
 Presets.WAR_FURY_PVE_V1 = Migrate(Presets.WAR_FURY_PVE, FURY_MAIN, FURY_OFF)
 Presets.WAR_FURY_OVERPOWER_PVE_V1 = Migrate(Presets.WAR_FURY_OVERPOWER_PVE, FURY_MAIN, FURY_OFF)
 Presets.WAR_ARMS_PVE_V1 = Migrate(Presets.WAR_ARMS_PVE, ARMS_MAIN, ARMS_OFF)
+
+-- Glifos que cambian un poco la rotacion (toggles en Opciones > Rotacion)
+local SHATTERING_GLYPH = {
+    shattering = { name = "Glyph of Shattering Throw", ids = { 58357, 64382 }, spell = 64382,
+        desc = "Cambio del servidor: Shattering Throw instantáneo y en cualquier postura; entra con Burst." },
+}
+for _, key in ipairs({ "WAR_FURY_PVE", "WAR_FURY_OVERPOWER_PVE", "WAR_ARMS_PVE" }) do
+    Presets[key].glyphs = SHATTERING_GLYPH
+end
+
+-- Pre-pull (boton Pre-Pull, una vez): poción
+for _, key in ipairs({ "WAR_FURY_PVE", "WAR_FURY_OVERPOWER_PVE", "WAR_ARMS_PVE" }) do
+    Presets[key].lists.prepull = { RotaCore.PrepullPotion("melee") }
+    Presets[key].meta.prepullLead = 2
+    Presets[key].meta.prepullNote = "Poción justo antes del pull."
+end
 
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.WAR_FURY_PVE.meta.requires = { "BT" }

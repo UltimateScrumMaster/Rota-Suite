@@ -74,6 +74,7 @@ function UI:ResetPosition()
         UI.controlsFrame:SetPoint("CENTER", parent or UI.controlsFrame, "CENTER", 0, -60)
         UI:SaveControlsPosition()
     end
+    if RotaCore.Prepull and RotaCore.Prepull.ResetPosition then RotaCore.Prepull:ResetPosition() end
     if _G.DEFAULT_CHAT_FRAME and _G.DEFAULT_CHAT_FRAME.AddMessage then
         _G.DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00[RotaCore]|r Posición del HUD y Controles restablecida.")
     end
@@ -630,6 +631,14 @@ function UI:Init()
             reasonText:SetText("")
             reasonText:Hide()
             UI.reasonText = reasonText
+
+            -- "PRE" arriba del icono mientras el boton Pre-Pull esta armado
+            local preText = UI.mainIcon.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            preText:SetFontObject(GameFontNormal)
+            preText:SetPoint("BOTTOM", UI.mainIcon.frame, "TOP", 0, 2)
+            preText:SetText("|cFF00FF00PRE|r")
+            preText:Hide()
+            UI.preText = preText
         end
     end
 
@@ -953,6 +962,15 @@ end
 function UI:UpdateDisplay(mainAction, offAction)
     UI.currentMainAction = mainAction
     UI.currentOffAction = offAction
+
+    local pre = UI.preText
+    if pre then
+        local armed = RotaCore.Prepull and RotaCore.Prepull.armed or false
+        if armed ~= UI.preShown then
+            UI.preShown = armed
+            if armed then pre:Show() else pre:Hide() end
+        end
+    end
 
     local db = _G.RotaCoreDB or {}
     local dbSettings = db.settings or db

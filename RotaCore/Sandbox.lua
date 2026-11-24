@@ -94,15 +94,30 @@ function SafeEnv.ready(a)
     if not s or not SafeEnv.known(a) then return false end
     return SafeEnv.cd(a) <= (s.gcdRemains or 0) + 0.1
 end
---- segundos restantes de un buff (jugador por defecto)
+-- Un aura se puede pedir por nombre o por ID de hechizo (el ID funciona con el cliente en cualquier idioma)
+local function AuraName(nameOrId)
+    if type(nameOrId) == "number" then return _G.GetSpellInfo and _G.GetSpellInfo(nameOrId) or nil end
+    return nameOrId
+end
+--- segundos restantes de un buff (jugador por defecto). Nombre o ID: buff("Shadow Trance") o buff(17941)
 function SafeEnv.buff(name, unit)
     local s = S()
-    return (s and s.buffRemaining and s.buffRemaining(name, unit or "player")) or 0
+    name = AuraName(name)
+    return (name and s and s.buffRemaining and s.buffRemaining(name, unit or "player")) or 0
 end
---- segundos restantes de un debuff tuyo (objetivo por defecto)
+--- segundos restantes de un debuff tuyo (objetivo por defecto). Nombre o ID
 function SafeEnv.debuff(name, unit)
     local s = S()
-    return (s and s.debuffRemaining and s.debuffRemaining(name, unit or "target", true)) or 0
+    name = AuraName(name)
+    return (name and s and s.debuffRemaining and s.debuffRemaining(name, unit or "target", true)) or 0
+end
+--- tiempo de casteo real en segundos (con haste); 0 si es instantaneo. Alias del catalogo, nombre o ID
+function SafeEnv.castTime(a)
+    local id = a
+    if type(a) == "string" and RotaCore.Spells and RotaCore.Spells.ResolveID then id = RotaCore.Spells:ResolveID(a) or a end
+    if not _G.GetSpellInfo then return 0 end
+    local _, _, _, _, _, _, ms = _G.GetSpellInfo(id)
+    return (ms and ms > 0) and ms / 1000 or 0
 end
 --- % de mana (0-100). En clases sin mana devuelve 0.
 function SafeEnv.mana()
@@ -152,6 +167,28 @@ function SafeEnv.enemies()
     local s = S()
     return (s and s.aoeCount) or 0
 end
+--- cuantos tenes de un objeto en las bolsas (ID de objeto), ej. itemCount(40211) para Potion of Speed
+function SafeEnv.itemCount(id)
+    return (_G.GetItemCount and _G.GetItemCount(id)) or 0
+end
+--- poción lista para tomar: la tenés en las bolsas, no está en cooldown y no tenés su buff. Devuelve el alias o nil.
+--- potion("SPEED_POT") (Potion of Speed) o potion("WILD_POT") (Potion of Wild Magic)
+function SafeEnv.potion(alias)
+    local pot = RotaCore.Spells and RotaCore.Spells.POTIONS and RotaCore.Spells.POTIONS[alias]
+    if not pot then return nil end
+    if not _G.GetItemCount or _G.GetItemCount(pot.item) <= 0 then return nil end
+    if _G.GetItemCooldown then
+        local start, dur = _G.GetItemCooldown(pot.item)
+        local s = S()
+        if start and dur and dur > 1.5 and start + dur > ((s and s.now) or 0) then return nil end
+    end
+    if SafeEnv.buff(pot.buff) > 0 then return nil end
+    return alias
+end
+--- estas canalizando un hechizo (ej. Army of the Dead, Mind Flay)
+function SafeEnv.channeling()
+    return (_G.UnitChannelInfo and _G.UnitChannelInfo("player")) and true or false
+end
 --- te estas moviendo
 function SafeEnv.moving()
     return (_G.GetUnitSpeed and (_G.GetUnitSpeed("player") or 0) > 0) and true or false
@@ -161,20 +198,23 @@ function SafeEnv.gcd()
     local s = S()
     return (s and s.gcdRemains) or 0
 end
---- stacks de un buff (jugador por defecto)
+--- stacks de un buff (jugador por defecto). Nombre o ID
 function SafeEnv.buffStacks(name, unit)
     local s = S()
-    return (s and s.buffCount and s.buffCount(name, unit or "player")) or 0
+    name = AuraName(name)
+    return (name and s and s.buffCount and s.buffCount(name, unit or "player")) or 0
 end
---- stacks de un debuff tuyo (objetivo por defecto)
+--- stacks de un debuff tuyo (objetivo por defecto). Nombre o ID
 function SafeEnv.debuffStacks(name, unit)
     local s = S()
-    return (s and s.debuffCount and s.debuffCount(name, unit or "target", true)) or 0
+    name = AuraName(name)
+    return (name and s and s.debuffCount and s.debuffCount(name, unit or "target", true)) or 0
 end
---- segundos restantes de un debuff de cualquiera (objetivo por defecto), ej. Faerie Fire de otro druida
+--- segundos restantes de un debuff de cualquiera (objetivo por defecto), ej. Faerie Fire de otro druida. Nombre o ID
 function SafeEnv.debuffAny(name, unit)
     local s = S()
-    return (s and s.debuffRemaining and s.debuffRemaining(name, unit or "target", false)) or 0
+    name = AuraName(name)
+    return (name and s and s.debuffRemaining and s.debuffRemaining(name, unit or "target", false)) or 0
 end
 --- variable del preset (las que se ajustan en el editor), con valor por defecto
 function SafeEnv.var(name, default)

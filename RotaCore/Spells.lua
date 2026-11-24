@@ -184,7 +184,18 @@ function Spells:ResolveID(aliasOrName)
 end
 
 --- Returns GetSpellInfo for the resolved spell.
+-- Pociones: son objetos, no hechizos. alias -> { objeto, buff que da }
+Spells.POTIONS = {
+    SPEED_POT = { item = 40211, buff = 53908 },  -- Potion of Speed (haste)
+    WILD_POT = { item = 40212, buff = 53909 },   -- Potion of Wild Magic (crítico y poder con hechizos)
+}
+
 function Spells:GetInfo(aliasOrName)
+    local pot = Spells.POTIONS[aliasOrName]
+    if pot and _G.GetItemInfo then
+        local name, _, _, _, _, _, _, _, _, icon = _G.GetItemInfo(pot.item)
+        if name then return name, "", icon end
+    end
     local spellId = Spells:ResolveID(aliasOrName)
     if spellId and _G.GetSpellInfo then
         return _G.GetSpellInfo(spellId)

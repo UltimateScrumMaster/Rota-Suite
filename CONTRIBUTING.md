@@ -22,6 +22,11 @@ Abrí un issue con la plantilla **Rotación**. Lo más útil:
    `record --force` genera situaciones nuevas y no deja ver qué cambió: solo para builds nuevas.
    Nunca edites `tools/golden/*.lua` a mano.
 4. Agregá un test en `tools/test_runner.lua` con la situación que motivó el cambio.
+5. Glifos: si un glifo cambia un poco la rotación, declaralo en `preset.glyphs` (con `ids` si los tenés, medidos en
+   el servidor) y usá `glyphOn("clave")`, con un test
+   con el glifo puesto y otro sin él (las referencias se graban sin glifos). Si cambia mucho, proponé otra build.
+6. Pre-pull: cada build tiene su lista `prepull`, solo para antes del pull (termina al entrar en combate). Para la
+   poción usá `RotaCore.PrepullPotion("melee")` o `("caster")`.
 
 ## Reglas para todo PR
 

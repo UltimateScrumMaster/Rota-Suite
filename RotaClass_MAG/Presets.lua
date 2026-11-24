@@ -34,6 +34,7 @@ local function CommonSpells()
         FS = S("Flamestrike", 42926),           AE = S("Arcane Explosion", 42921),
         TW = S("Time Warp", 80353),             BW = S("Blast Wave", 42945),
         DB = S("Dragon's Breath", 42950),       FBLAST = S("Fire Blast", 42873),
+        ILANCE = S("Ice Lance", 42914),         SPEED_POT = S("Potion of Speed", 40211),
         GLOVES = S("Hyperspeed Acceleration", 54758),
         RACIAL = RacialSpell(),
     }
@@ -134,11 +135,15 @@ if combat() and burst() and ready("MI") then return "MI" end
         GlovesRacial("arc"),
     })
 
--- Fire (Wowhead)
+-- Fire (Wowhead + feedback de jugadores de Fuego)
 Presets.MAG_FIRE_PVE, Presets.MAG_FIRE_PVE_V1 = Preset("mag_fire_pve", "Fire Mage PvE", "[FIRE]", "Fire",
     "evaluateMagFire", "evaluateMagFireOff", "FB", {
-        scorch = 0,             -- 1: mantener Improved Scorch si nadie pone el debuff de critico (Wowhead no lo usa)
+        scorch = "auto",        -- "auto": Scorch si el debuff de critico (tuyo o de un brujo) se esta por caer y tenes
+                                -- Improved Scorch; 1: siempre mantenerlo; 0: nunca
         filler = "FB",          -- "FB" (Fireball) o "FFB" (Frostfire Bolt, build TTW/FFB)
+        prepull = "pyro",       -- boton Pre-Pull: "pyro" (poción 4 s antes y Pyroblast) o "filler" (poción 2 s antes
+                                -- y Fireball / Frostfire Bolt)
+        prepot = 1,             -- 1: la poción entra en el pre-pull
     }, {
         R("fire_aoe", "FS", "AoE: Living Bomb > Flamestrike con Firestarter > Blast Wave > Dragon's Breath > Flamestrike", [[
 if aoe() then
@@ -152,25 +157,38 @@ end
         R("fire_pyro", "PYRO", "Hot Streak: Pyroblast", [[
 if mag.hotStreak > gcd() and known("PYRO") then return "PYRO" end
 ]]),
-        R("fire_lb", "LB", "Living Bomb (dejarla explotar)", [[
+        R("fire_lb", "LB", "Living Bomb: dejarla explotar y renovarla apenas se cae", [[
 if mag.livingBomb <= gcd() and known("LB") then return "LB" end
 ]]),
-        R("fire_moving", "FBLAST", "En movimiento: Fire Blast", [[
-if mag.moving and ready("FBLAST") then return "FBLAST" end
+        R("fire_moving", "FBLAST", "En movimiento: Fire Blast; si esta en cooldown, Ice Lance", [[
+if mag.moving then
+    if ready("FBLAST") then return "FBLAST" end
+    if known("ILANCE") then return "ILANCE" end
+end
 ]]),
-        R("fire_scorch", "SCORCH", "Scorch si nadie pone el debuff de critico (var scorch)", [[
-if var("scorch", 0) == 1 and mag.critDebuff <= gcd() + 2 and known("SCORCH") then return "SCORCH" end
+        R("fire_scorch", "SCORCH", "Scorch si el debuff de critico se esta por caer (var scorch)", [[
+local mode = var("scorch", "auto")
+if mode == 0 or not known("SCORCH") then return nil end
+-- "auto": solo con Improved Scorch, y cuando el debuff de cualquiera (Shadow Mastery de un brujo, Winter's Chill,
+-- Improved Scorch) se cae: ej. el brujo Affliction deja de usar Shadow Bolt debajo de 25%
+if mode == "auto" and not talent("Improved Scorch") then return nil end
+if mag.critDebuff <= gcd() + castTime("SCORCH") + 1 then return "SCORCH" end
 ]]),
         R("fire_filler", "FB", "Fireball (o Frostfire Bolt con filler = FFB)", [[
 if var("filler", "FB") == "FFB" and known("FFB") then return "FFB" end
 return "FB"
 ]]),
     }, {
-        R("fire_comb", "COMB", "Combustion con Living Bomb recien puesta", [[
-if combat() and burst() and mag.livingBomb > 6 and ready("COMB") then return "COMB" end
+        R("fire_mi", "MI", "Mirror Image a cooldown, pero no con otros cooldowns activos (usa GCD)", [[
+local otherCDs = buff("Combustion") > 0 or buff("Berserking") > 0 or buff("Blood Fury") > 0
+    or buff("Hyperspeed Acceleration") > 0 or buff("Icy Veins") > 0
+if combat() and burst() and not otherCDs and ready("MI") then return "MI" end
 ]]),
-        R("fire_mi", "MI", "Mirror Image", [[
-if combat() and burst() and ready("MI") then return "MI" end
+        R("fire_comb", "COMB", "Combustion a cooldown", [[
+if combat() and burst() and ready("COMB") then return "COMB" end
+]]),
+        R("fire_iv", "IV", "Frostfire Bolt: Icy Veins a cooldown", [[
+if combat() and burst() and var("filler", "FB") == "FFB" and ready("IV") then return "IV" end
 ]]),
         GlovesRacial("fire"),
     })
@@ -210,6 +228,42 @@ if combat() and burst() and ready("MI") then return "MI" end
 Presets.MAG_ARCANE_PVE.meta.requires = { "AP" }
 Presets.MAG_FIRE_PVE.meta.requires = { "LB", "PYRO" }
 Presets.MAG_FROST_PVE.meta.requires = { "WE", "DF" }
+
+-- Pre-pull de Fuego (boton Pre-Pull, una vez): poción y Pyroblast (o el relleno); Mirror Image y Living Bomb van
+-- al entrar en combate.
+Presets.MAG_FIRE_PVE.lists.prepull = {
+    R("fire_pre_potion", "WILD_POT", "Poción (var prepot): Wild Magic, o si no Speed", [[
+if var("prepot", 1) == 1 then
+    local p = potion("WILD_POT") or potion("SPEED_POT")
+    if p then return p end
+end
+]]),
+    R("fire_pre_cast", "PYRO", "Pyroblast (o el relleno con prepull = filler); el pull lo da el impacto", [[
+if var("prepull", "pyro") == "pyro" and known("PYRO") then return "PYRO" end
+if var("filler", "FB") == "FFB" and known("FFB") then return "FFB" end
+return "FB"
+]]),
+}
+Presets.MAG_FIRE_PVE.meta.prepullLead = 6
+Presets.MAG_FIRE_PVE.meta.prepullNote = "Poción y Pyroblast unos 6 s antes (5 s de casteo más el viaje). Si en Editar "
+    .. "rotación pusiste prepull = filler: unos 4 s antes y Fireball."
+
+Presets.MAG_ARCANE_PVE.lists.prepull = {
+    RotaCore.PrepullPotion("caster"),
+    R("arc_pre_ab", "AB", "Arcane Blast precasteado", [[
+if known("AB") then return "AB" end
+]]),
+}
+Presets.MAG_ARCANE_PVE.meta.prepullLead = 3
+Presets.MAG_ARCANE_PVE.meta.prepullNote = "Poción y Arcane Blast unos 3 s antes."
+Presets.MAG_FROST_PVE.lists.prepull = {
+    RotaCore.PrepullPotion("caster"),
+    R("frost_pre_fb", "FROSTBOLT", "Frostbolt precasteado", [[
+if known("FROSTBOLT") then return "FROSTBOLT" end
+]]),
+}
+Presets.MAG_FROST_PVE.meta.prepullLead = 3
+Presets.MAG_FROST_PVE.meta.prepullNote = "Poción y Frostbolt unos 3 s antes."
 
 if RotaCore.Profiles and RotaCore.Profiles.RegisterPreset then
     for _, key in ipairs({ "MAG_ARCANE_PVE", "MAG_FIRE_PVE", "MAG_FROST_PVE" }) do

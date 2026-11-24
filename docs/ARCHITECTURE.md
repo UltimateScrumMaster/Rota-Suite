@@ -6,6 +6,7 @@
 OnUpdate (20 veces por segundo)
   └─ State:Update()            estado del tick en una tabla única (recursos, auras, CDs, runas, enemigos)
        └─ provider de la clase  completa state.dk / state.rog / state.dru ... (sin crear tablas)
+  └─ lista prepull (si el botón Pre-Pull está armado) en lugar de main, hasta el pull
   └─ lista main                 reglas en orden: la primera que devuelve una habilidad va al icono grande
   └─ lista off                  igual, para el icono chico (fuera del GCD)
   └─ UI:UpdateDisplay()         iconos, espiral de espera, motivo (modo aprendizaje)
@@ -24,6 +25,8 @@ OnUpdate (20 veces por segundo)
 | `RotaCore/UI.lua`, `Options.lua`, `Minimap.lua` | HUD, panel de opciones, botón del minimapa |
 | `RotaCore/CodeGen.lua`, `ParserLua.lua` | pasan un preset a texto y de vuelta (pestaña Código del editor) |
 | `RotaCore/Snapshot.lua` | graba situaciones reales del juego para usarlas como tests |
+| `RotaCore/Glyphs.lua` | glifos de cada build (`preset.glyphs`): detección, apagado por personaje hasta cambiar de talentos, `glyphOn()` |
+| `RotaCore/Prepull.lua` | botón Pre-Pull: arma una vez la lista `prepull` y la corta al entrar en combate, al terminarse o por tiempo; opcional, lo arma el temporizador de pull de DBM |
 | `RotaClass_<CLASE>/` | provider de estado, detección de build, funciones propias y `Presets.lua` con las builds |
 | `RotaEditor/` | editor en el juego (se carga al abrirlo) |
 | `RotaProbe/` | escaneo de hechizos, talentos y APIs del servidor |
@@ -32,10 +35,12 @@ OnUpdate (20 veces por segundo)
 
 ```lua
 {
-    meta = { id = "dru_feral_pve", class = "DRUID", requires = { "MANGLE", "BERSERK" }, ... },
+    meta = { id = "dru_feral_pve", class = "DRUID", requires = { "MANGLE", "BERSERK" },
+             prepullLead = 4, prepullNote = "...", ... },               -- prepull*: tooltip del botón Pre-Pull
     spells = { RIP = { name = "Rip", defaultId = 49800 }, ... },  -- alias -> hechizo
     vars = { maintainFF = 1, ... },                                -- ajustes que lee var("nombre")
-    lists = { main = { regla, regla, ... }, off = { ... } },
+    glyphs = { omen = { name = "Glyph of Omen of Clarity", spell = 16864, desc = "..." } },  -- toggles: glyphOn("omen")
+    lists = { main = { regla, ... }, off = { ... }, prepull = { ... } },  -- prepull es opcional (botón Pre-Pull)
 }
 ```
 

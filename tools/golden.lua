@@ -23,7 +23,7 @@ _G.RotaCoreDB = { settings = { aoeMode = "OFF" }, charBuilds = {}, classBuilds =
     classProfiles = {}, charCustomProfiles = {} }
 wowmock.setCharacter("Golden", "Frostmourne")
 for _, f in ipairs({ "Sandbox", "Spells", "Compat", "State", "Compiler", "CodeGen", "ParserLua",
-    "Profiles", "Snapshot", "UI", "RotaCore" }) do
+    "Profiles", "Snapshot", "Glyphs", "Prepull", "UI", "RotaCore" }) do
     dofile("RotaCore/" .. f .. ".lua")
 end
 local RotaCore = _G.RotaCore

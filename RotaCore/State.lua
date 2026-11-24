@@ -836,6 +836,8 @@ function State:ScanTalentsAndGlyphs()
     stateData.dk.hasGlyphOfDisease = hasGlyphOfDisease
     stateData.pal.hasGlyphOfReckoning = hasGlyphOfReckoning
     stateData.war.hasGlyphOfShatteringThrow = hasGlyphOfShatteringThrow
+    -- Toggles de glifos por build: huella de talentos nueva y vencimiento de los apagados (RotaCore/Glyphs.lua)
+    if RotaCore.Glyphs then RotaCore.Glyphs:Refresh() end
 
     -- 2. Scan Talents
     local numTabs = _G.GetNumTalentTabs and _G.GetNumTalentTabs() or 3

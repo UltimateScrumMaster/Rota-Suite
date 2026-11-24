@@ -2,14 +2,17 @@
 
 Fuentes:
 - Cambios iniciales: https://whitemane.gg/en/news/getting-started-on-wotlk-rebuffed
-- Changelog Frostmourne: https://whitemane.gg/en/changelog?type=frostmourne (revisado hasta 2026-11-18)
+- Changelog Frostmourne: https://whitemane.gg/en/changelog?type=frostmourne (revisado hasta 2026-11-24)
 
 Solo lo que cambia qué apretar o cuándo. Balance puro de números no está.
+
+Todas las clases (2026-11-04): menos crítico contra criaturas de nivel más alto, como en WotLK Classic (los jefes de raid cuentan como 3 niveles más).
 
 ## Death Knight
 - Summon Gargoyle: cada Gargoyle Strike recalcula la velocidad con la haste actual del DK (2026-08-01). Por eso conviene estar en Unholy Presence durante toda la Gárgola (30 s) y volver a Blood Presence cuando desaparece (Wowhead WotLK dice lo mismo). Ojo: Wowhead dice que la Gárgola toma el AP al invocarla (por eso Blood Fury va antes); el changelog de Rebuffed solo cambia la haste. **Aplicado.**
 - Blood Boil: +50% de daño a objetivos con Frost Fever o Blood Plague de cualquier DK (2026-10-29).
 - Raise Dead: no gasta el CD si falla (2026-09-24).
+- Glyph of Army of the Dead (nuevo, Minor, 2026-11-23): los ghouls no tauntean. **Aplicado** como toggle: Frost lo tira en el pre-pull; Unholy en combate (después de Empower Rune Weapon) también fuera de jefes.
 
 ## Paladín
 - Fanaticism: los golpes melee tienen 20% de chance de resetear Divine Storm. DS va primero. **Aplicado.**
@@ -19,7 +22,7 @@ Solo lo que cambia qué apretar o cuándo. Balance puro de números no está.
 ## Guerrero
 - Improved Mortal Strike: hasta +35% de daño a Mortal Strike (antes 10%). MS antes que Overpower. **Aplicado.**
 - Sweeping Strikes: 10 cargas (antes 5). No lo disparan Whirlwind ni Bladestorm.
-- Glyph of Shattering Throw (nuevo, Minor): instantáneo, cualquier stance, no en jugadores. **Aplicado** (Shattering Throw con Burst si tenés el glifo).
+- Glyph of Shattering Throw (nuevo, Minor): instantáneo, cualquier stance, no en jugadores. **Aplicado** como toggle (Shattering Throw con Burst si tenés el glifo).
 - Titan's Grip: sin penalización de daño en T7.
 - Flurry procea también con daño en área.
 
@@ -45,6 +48,7 @@ Solo lo que cambia qué apretar o cuándo. Balance puro de números no está.
 - Missile Barrage: procea con Arcane Blast a chance completa; con Arcane Barrage, Fireball, Frostbolt y Frostfire Bolt a la mitad. Rola una vez por Arcane Missiles.
 - Arcane Missiles se beneficia de 4pT10 (72% a 4 stacks de Arcane Blast).
 - Ice Lance: cuenta los debuffs de crítico una vez por escuela.
+- Mirror Image: el Fire Blast de las copias usa el coeficiente de WotLK Classic, 0.15 en vez de 0.6 (2026-11-04). Fuego: Mirror Image a cooldown pero nunca con otros cooldowns activos (usa GCD). **Aplicado.**
 
 ## Cazador
 - Trap Launcher: Explosive Trap (nuevo): trampa explosiva a distancia. Una trampa activa a la vez. No en arenas ni BGs. **Aplicado** (MM y SV en ST, todos en AoE). El ID del hechizo no está confirmado: se busca por nombre.
@@ -53,12 +57,12 @@ Solo lo que cambia qué apretar o cuándo. Balance puro de números no está.
 - Felicidad de la mascota afecta su daño: +25% feliz, -25% infeliz.
 
 ## Sacerdote (Sombras)
-- Glyph of Quick Pain (nuevo): Shadow Word: Pain hace tick más rápido con haste y dura menos.
+- Glyph of Quick Pain (nuevo): Shadow Word: Pain hace tick más rápido con haste y dura menos. Sin aplicar: falta definir qué cambia en la rotación para hacerlo toggle.
 - Improved Devouring Plague: el daño instantáneo baja ~11% (ya no cuenta dos veces el bonus).
 - Shadowfiend pega ~8-10% más.
 
 ## Druida
-- Glyph of Omen of Clarity (nuevo, Major): Faerie Fire (Feral) da Clearcasting al 100%, en cada golpe. **Aplicado** solo si el glifo está puesto: Feral usa Faerie Fire (Feral) en vez de esperar energía.
+- Glyph of Omen of Clarity (nuevo, Major; desde 2026-11-18 procea en cada golpe de Faerie Fire (Feral), no solo al aplicarlo): Faerie Fire (Feral) da Clearcasting al 100%. **Aplicado** solo si el glifo está puesto y su casilla está tildada en Opciones: Feral usa Faerie Fire (Feral) en vez de esperar energía.
 - Starfire y Wrath (rango máximo): +12% de daño base y de coeficiente.
 - Starfall: el impacto también daña al objetivo principal (sirve contra un boss).
 - Ferocious Bite con Clearcasting sigue gastando hasta 30 de energía extra.

@@ -274,10 +274,17 @@ local function CurseNeeded(state, wl, defaultCurse)
 end
 
 -- Life Tap: mantener el buff del glifo (var glyphLifeTap = 1) y recuperar mana debajo de lifeTapMana
+-- Glyph of Life Tap: puesto (toggle en Opciones, RotaCore/Glyphs.lua) y var glyphLifeTap sin apagar
+local function LifeTapGlyph(state)
+    if Var(state, "glyphLifeTap", 1) ~= 1 then return false end
+    local G = RotaCore.Glyphs
+    return (G and G:On(RotaCore.Profiles and RotaCore.Profiles:GetActiveProfile(), "lifetap")) and true or false
+end
+
 local function LifeTapNeeded(state, wl)
     if not WlHas(state, "LT") then return false end
     if (state.powerPct or 100) < Var(state, "lifeTapMana", 15) then return true end
-    return Var(state, "glyphLifeTap", 1) == 1 and state.inCombat and wl.lifeTapBuff <= (state.gcdRemains or 0)
+    return LifeTapGlyph(state) and state.inCombat and wl.lifeTapBuff <= (state.gcdRemains or 0)
 end
 
 -- Shadow Mastery (Improved Shadow Bolt): Shadow Bolt si nadie tiene el debuff puesto (var shadowMastery = 1)
@@ -436,7 +443,7 @@ end
 local function AffLifeTapNeeded(state, wl)
     if not WlHas(state, "LT") then return false end
     if (state.powerPct or 100) < Var(state, "lifeTapMana", 15) then return true end
-    return Var(state, "glyphLifeTap", 1) == 1 and state.inCombat and wl.projLT <= 0
+    return LifeTapGlyph(state) and state.inCombat and wl.projLT <= 0
 end
 
 local function AffShadowMasteryNeeded(state, wl)
@@ -502,7 +509,7 @@ local function AffBefore(state, wl, candidate)
         isFiller = true
     end
 
-    if Var(state, "glyphLifeTap", 1) == 1 and state.inCombat and WlHas(state, "LT") and wl.projLT <= dur then
+    if LifeTapGlyph(state) and state.inCombat and WlHas(state, "LT") and wl.projLT <= dur then
         state.reason = "Renovar Life Tap antes de castear"
         return "LT"
     end

@@ -154,7 +154,7 @@ if dru.mangle < poolRem and known("MANGLE") and not shredLeavesFor(dru.mangle, "
     poolAlias, poolRem = "MANGLE", dru.mangle
 end
 -- Rebuffed: con Glyph of Omen of Clarity, Faerie Fire (Feral) da Clearcasting: se usa en vez de esperar
-if (poolAlias or dru.energy < catCost("SHRED")) and glyph("Glyph of Omen of Clarity") and ready("FFF") then
+if (poolAlias or dru.energy < catCost("SHRED")) and glyphOn("omen") and ready("FFF") then
     say("Glyph of Omen of Clarity: Faerie Fire da Clearcasting")
     return "FFF"
 end
@@ -223,6 +223,25 @@ Presets.DRU_FERAL_PVE = {
         off = FERAL_OFF,
     },
 }
+
+-- Glifos que cambian un poco la rotacion (toggles en Opciones > Rotacion)
+Presets.DRU_FERAL_PVE.glyphs = {
+    omen = { name = "Glyph of Omen of Clarity", spell = 16864,
+        desc = "Cambio del servidor: Faerie Fire (Feral) da Clearcasting en cada golpe; se usa en vez de esperar energía." },
+}
+
+-- Pre-pull (boton Pre-Pull, una vez)
+Presets.DRU_BALANCE_PVE.lists.prepull = {
+    RotaCore.PrepullPotion("caster"),
+    R("bal_pre_wrath", "WRATH", "Wrath precasteado", [[
+if known("WRATH") then return "WRATH" end
+]]),
+}
+Presets.DRU_BALANCE_PVE.meta.prepullLead = 3
+Presets.DRU_BALANCE_PVE.meta.prepullNote = "Poción y Wrath unos 3 s antes."
+Presets.DRU_FERAL_PVE.lists.prepull = { RotaCore.PrepullPotion("melee") }
+Presets.DRU_FERAL_PVE.meta.prepullLead = 2
+Presets.DRU_FERAL_PVE.meta.prepullNote = "Poción justo antes del pull."
 
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.DRU_BALANCE_PVE.meta.requires = { "MOONKIN", "STARFALL" }

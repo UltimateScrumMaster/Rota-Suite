@@ -66,7 +66,7 @@ local function Preset(id, name, short, spec, mainFn, offFn, mainAction, curse, s
         vars = {
             aoeTargets = 4,
             curse = curse,       -- "auto" (Doom en bosses, Agony en el resto), "doom", "agony" o "elements"
-            glyphLifeTap = 1,    -- 1: mantener el buff de Glyph of Life Tap en combate
+            glyphLifeTap = 1,    -- 1: con Glyph of Life Tap puesto, mantener su buff en combate (0: nunca)
             lifeTapMana = 15,    -- Life Tap debajo de este % de mana
             shadowMastery = shadowMastery,  -- 1: Shadow Bolt si falta Shadow Mastery (0 si otro brujo lo pone)
         },
@@ -223,6 +223,28 @@ if ready("CB") then return "CB" end
 return "INC"
 ]]),
     }, { BurstOff("dest") })
+
+-- Pre-pull (boton Pre-Pull, una vez): poción y Shadow Bolt precasteado (pone Shadow Mastery)
+for _, key in ipairs({ "WL_AFFLICTION_PVE", "WL_DEMONOLOGY_PVE", "WL_DESTRUCTION_PVE" }) do
+    Presets[key].lists.prepull = {
+        RotaCore.PrepullPotion("caster"),
+        R("wl_pre_sb", "SB", "Shadow Bolt precasteado", [[
+if known("SB") then return "SB" end
+]]),
+    }
+    Presets[key].meta.prepullLead = 4
+    Presets[key].meta.prepullNote = "Poción y Shadow Bolt unos 4 s antes."
+end
+
+-- Glifos que cambian un poco la rotacion (toggles en Opciones > Rotacion)
+local LIFE_TAP_GLYPH = {
+    lifetap = { name = "Glyph of Life Tap", spell = 57946,
+        desc = "Life Tap da un buff de poder con hechizos: se renueva en combate antes de que caiga. Sin el glifo, "
+            .. "Life Tap solo con poco mana." },
+}
+for _, key in ipairs({ "WL_AFFLICTION_PVE", "WL_DEMONOLOGY_PVE", "WL_DESTRUCTION_PVE" }) do
+    Presets[key].glyphs = LIFE_TAP_GLYPH
+end
 
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.WL_AFFLICTION_PVE.meta.requires = { "UA", "HAUNT" }

@@ -338,6 +338,8 @@ Assert(type(compiledTest.evaluatorOff) == "function", "Compiler:Compile returns 
 print("\n[Suite 11] RotaClass_DK 6 Runes & Grace Period Tracking")
 dofile("RotaCore/Profiles.lua")
 dofile("RotaCore/Snapshot.lua")
+dofile("RotaCore/Glyphs.lua")
+dofile("RotaCore/Prepull.lua")
 dofile("RotaCore/UI.lua")
 dofile("RotaCore/RotaCore.lua")
 dofile("RotaClass_DK/RotaClass_DK.lua")
@@ -3704,6 +3706,8 @@ wowmock.setClass("Warlock", "WARLOCK")
 SetBuild("auto")
 Assert(LoadAddOn("RotaClass_WL") == true, "LoadAddOn('RotaClass_WL') carga el modulo")
 local WL = _G.RotaClass_WL
+wowmock.setGlyph(1, 63320, "Glyph of Life Tap") -- las pruebas del Brujo asumen el glifo puesto
+RotaCore.State:ScanTalentsAndGlyphs()
 local wlMod = RotaCore:GetClassModule("WARLOCK")
 Assert(wlMod ~= nil and #wlMod.builds == 4, "Modulo WARLOCK registrado con AUTO + 3 specs")
 Assert(RotaCore.Profiles:GetPreset("wl_affliction_pve") ~= nil, "Preset wl_affliction_pve registrado")
@@ -4797,6 +4801,24 @@ for id, p in pairs(RotaCore.Profiles.presets) do
 end
 Assert(reqOk, "Todas las builds declaran meta.requires con alias de su catalogo", reqBad)
 
+-- glyphOn("clave") solo con claves declaradas en preset.glyphs; lista prepull solo con meta.prepullLead
+local lintOk, lintBad = true, ""
+for id, p in pairs(RotaCore.Profiles.presets) do
+    if p.meta and not p.meta.v1Of and not id:find("^test_") then
+        for _, listName in ipairs({ "main", "off", "prepull" }) do
+            for _, r in ipairs((p.lists and p.lists[listName]) or {}) do
+                for key in tostring(r.code or ""):gmatch('glyphOn%(%s*"([%w_]+)"') do
+                    if not (p.glyphs and p.glyphs[key]) then lintOk, lintBad = false, lintBad .. id .. ":" .. key .. " " end
+                end
+            end
+        end
+        if p.lists and p.lists.prepull and not p.meta.prepullLead then
+            lintOk, lintBad = false, lintBad .. id .. " (prepull sin prepullLead) "
+        end
+    end
+end
+Assert(lintOk, "glyphOn usa claves de preset.glyphs y las listas prepull tienen prepullLead", lintBad)
+
 -- Build elegida sin el talento: aviso por chat una sola vez
 local said = {}
 local oldAdd = _G.DEFAULT_CHAT_FRAME.AddMessage
@@ -4842,12 +4864,267 @@ wowmock.inCombat = false
 end
 SuiteEtapa0()
 
+-- Feedback de jugadores: Mago Fuego y Sacerdote Sombras (reglas v2)
+local function SuiteFeedbackFireShadow()
+    print("\n[Suite] Feedback: Mago Fuego y Sacerdote Sombras")
+    local function evalBuild(class, token, id, setup)
+        wowmock.setClass(class, token)
+        RotaCore.Profiles:SetActiveProfile(id)
+        wowmock.clearAuras("player"); wowmock.clearAuras("target"); wowmock.clearSpellCDs()
+        wowmock.playerSpeed = 0
+        wowmock.inCombat = true
+        _G.RotaCoreDB.settings.aoeMode = "OFF"
+        _G.RotaCoreDB.settings.burstMode = true
+        if setup then setup() end
+        local st = RotaCore.State:Update(GetTime())
+        st.inCombat = wowmock.inCombat
+        st.isWaiting, st.reason = false, nil
+        local b = RotaCore.Profiles:GetActiveEvaluator()
+        return b.evaluatorMain(st), b.evaluatorOff(st)
+    end
+    for _, sp in ipairs({ { 42914, "Ice Lance" }, { 42873, "Fire Blast" }, { 55360, "Living Bomb" }, { 48108, "Hot Streak" },
+        { 59000, "Improved Spirit Tap" }, { 53908, "Speed" }, { 15258, "Shadow Weaving" }, { 48125, "Shadow Word: Pain" },
+        { 48160, "Vampiric Touch" }, { 48300, "Devouring Plague" }, { 15473, "Shadowform" } }) do
+        wowmock.registerSpell(sp[1], sp[2])
+    end
+    local lb = function() wowmock.setAura("target", { name = "Living Bomb", filter = "HARMFUL", duration = 12 }) end
+
+    -- Fuego
+    local m = evalBuild("Mage", "MAGE", "mag_fire_pve", function() lb(); wowmock.playerSpeed = 7; wowmock.triggerSpellCD(42873, 8) end)
+    Assert(m == "ILANCE", "Fuego: en movimiento con Fire Blast en cooldown -> Ice Lance")
+    m = evalBuild("Mage", "MAGE", "mag_fire_pve", function() wowmock.playerSpeed = 7 end)
+    Assert(m == "LB", "Fuego: en movimiento, Living Bomb caida va antes que Fire Blast")
+    local _, o = evalBuild("Mage", "MAGE", "mag_fire_pve", function()
+        lb(); wowmock.setAura("player", { name = "Combustion", filter = "HELPFUL", duration = 10 })
+    end)
+    Assert(o ~= "MI", "Fuego: Mirror Image no se usa con Combustion activa")
+    _, o = evalBuild("Mage", "MAGE", "mag_fire_pve", lb)
+    Assert(o == "MI", "Fuego: sin otros cooldowns activos -> Mirror Image")
+    m = evalBuild("Mage", "MAGE", "mag_fire_pve", function() wowmock.inCombat = false end)
+    Assert(m == "LB", "Fuego: fuera de combate sin tocar Pre-Pull -> rotacion normal (no fuerza Pyroblast)")
+    local savedTabs = wowmock.talents.tabs
+    wowmock.talents.tabs = { { name = "Arcane", pointsSpent = 0, talents = {} },
+        { name = "Fire", pointsSpent = 2, talents = { { name = "Improved Scorch", rank = 3 } } },
+        { name = "Frost", pointsSpent = 0, talents = {} } }
+    m = evalBuild("Mage", "MAGE", "mag_fire_pve", lb)
+    Assert(m == "SCORCH", "Fuego: con Improved Scorch y sin debuff de critico -> Scorch")
+    m = evalBuild("Mage", "MAGE", "mag_fire_pve", function()
+        lb(); wowmock.setAura("target", { name = "Shadow Mastery", filter = "HARMFUL", duration = 30, unitCaster = "party1" })
+    end)
+    Assert(m == "FB", "Fuego: el brujo mantiene Shadow Mastery -> no hace falta Scorch")
+    wowmock.talents.tabs = savedTabs
+
+    -- Sombras
+    local form = function() wowmock.setAura("player", { name = "Shadowform", filter = "HELPFUL", duration = 0 }) end
+    local dots = function()
+        wowmock.setAura("target", { name = "Vampiric Touch", filter = "HARMFUL", duration = 15 })
+        wowmock.setAura("target", { name = "Devouring Plague", filter = "HARMFUL", duration = 20 })
+    end
+    m = evalBuild("Priest", "PRIEST", "pri_shadow_pve", function()
+        form(); dots(); wowmock.setAura("player", { name = "Shadow Weaving", filter = "HELPFUL", duration = 15, count = 2 })
+    end)
+    Assert(m == "SWD", "Sombras opener: sin SW:P y menos de 5 stacks -> Shadow Word: Death")
+    m = evalBuild("Priest", "PRIEST", "pri_shadow_pve", function()
+        form(); dots()
+        wowmock.setAura("player", { name = "Shadow Weaving", filter = "HELPFUL", duration = 15, count = 5 })
+        wowmock.setAura("player", { name = "Improved Spirit Tap", filter = "HELPFUL", duration = 8 })
+    end)
+    Assert(m == "SWP", "Sombras: 5 stacks + Improved Spirit Tap -> SW:P sin esperar guantes ni Inner Focus")
+    m = evalBuild("Priest", "PRIEST", "pri_shadow_pve", function()
+        form(); dots()
+        wowmock.setAura("player", { name = "Shadow Weaving", filter = "HELPFUL", duration = 15, count = 5 })
+        wowmock.setAura("player", { name = "Speed", filter = "HELPFUL", duration = 10 })
+    end)
+    Assert(m == "MF", "Sombras: 5 stacks, sin proc y con la poción activa -> Mind Flay (espera el proc)")
+    m, o = evalBuild("Priest", "PRIEST", "pri_shadow_pve", function()
+        form(); dots()
+        wowmock.setAura("player", { name = "Shadow Weaving", filter = "HELPFUL", duration = 15, count = 3 })
+        wowmock.triggerSpellCD(34433, 300) -- Shadowfiend usado
+    end)
+    Assert(m == "MF" and o == "IFOCUS", "Sombras opener: 3 stacks -> Inner Focus (para el SW:P)")
+    m = evalBuild("Priest", "PRIEST", "pri_shadow_pve", function()
+        form(); wowmock.setAura("target", { name = "Vampiric Touch", filter = "HARMFUL", duration = 15 })
+        wowmock.playerSpeed = 7
+    end)
+    Assert(m == "DP", "Sombras: en movimiento con Devouring Plague caida -> Devouring Plague")
+    wowmock.playerSpeed = 0
+    wowmock.inventoryCooldowns = nil
+    wowmock.inCombat = false
+end
+SuiteFeedbackFireShadow()
+
+-- Boton Pre-Pull (lista prepull, una vez) y toggles de glifos por build
+local function SuitePrepullGlyphs()
+    print("\n[Suite] Pre-Pull y toggles de glifos")
+    local Prepull, Glyphs = RotaCore.Prepull, RotaCore.Glyphs
+    Prepull:Init()
+    local btn = Prepull.button
+    -- En el juego "en combate" lo actualizan los eventos PLAYER_REGEN_*: aca se copia del mock
+    local function tick()
+        RotaCore.State.data.inCombat = wowmock.inCombat and true or false
+        return RotaCore:UpdateAndEvaluate(GetTime())
+    end
+    wowmock.clearAuras("player"); wowmock.clearAuras("target"); wowmock.clearSpellCDs()
+    wowmock.inCombat = false
+    wowmock.items[40211] = 2 -- Potion of Speed en las bolsas
+    _G.RotaCoreDB.settings.burstMode = true
+    _G.RotaCoreDB.settings.aoeMode = "OFF"
+
+    -- Mago Fuego: la build tiene lista prepull
+    wowmock.setClass("Mage", "MAGE")
+    SetBuild("fire")
+    RotaCore.Profiles:SetActiveProfile("mag_fire_pve")
+    Prepull.armed, Prepull.hiddenUntilCombatEnds, Prepull.shown = false, false, nil
+    tick()
+    Assert(btn:IsShown(), "Pre-Pull: el boton aparece fuera de combate en una build con lista prepull")
+    btn:GetScript("OnClick")()
+    Assert(Prepull.armed, "Pre-Pull: el click lo arma")
+    local m = tick()
+    Assert(m == "SPEED_POT" and RotaCore.UI.preText ~= nil and RotaCore.UI.preText:IsShown(),
+        "Pre-Pull armado: poción primero y la etiqueta PRE sobre el icono")
+    wowmock.setAura("player", { name = "Speed", filter = "HELPFUL", duration = 15 })
+    m = tick()
+    Assert(m == "PYRO", "Pre-Pull armado: con la poción tomada -> Pyroblast")
+    wowmock.inCombat = true
+    tick()
+    Assert(not Prepull.armed and not btn:IsShown(), "Pre-Pull: al entrar en combate se desarma y el boton se va")
+    wowmock.inCombat = false
+    tick()
+    Assert(not btn:IsShown(), "Pre-Pull: despues del pull no vuelve hasta salir de combate")
+    btn:GetScript("OnEvent")(btn, "PLAYER_REGEN_ENABLED")
+    tick()
+    Assert(btn:IsShown() and not RotaCore.UI.preText:IsShown(), "Pre-Pull: al salir de combate el boton vuelve")
+    Prepull:Arm()
+    Prepull.armedAt = GetTime() - (Prepull:Lead() + Prepull.EXTRA_TIME + 1)
+    m = tick()
+    Assert(not Prepull.armed and m ~= "PYRO" and btn:IsShown(), "Pre-Pull: se corta por tiempo y el boton sigue")
+    -- Burst OFF no vacia el pre-pull (lo pidio el jugador con el boton)
+    _G.RotaCoreDB.settings.burstMode = false
+    wowmock.clearAuras("player")
+    Prepull:Arm()
+    m = tick()
+    Assert(m == "SPEED_POT", "Pre-Pull: con Burst apagado la poción sigue en el pre-pull")
+    _G.RotaCoreDB.settings.burstMode = true
+    Prepull:Disarm("cancel")
+    -- arrastrar el boton no lo arma
+    btn:GetScript("OnDragStart")(btn)
+    btn:GetScript("OnClick")(btn)
+    Assert(not Prepull.armed, "Pre-Pull: soltar despues de arrastrar no lo arma")
+    -- DK Unholy sin poción en las bolsas: nada para tirar -> aviso y el boton queda
+    wowmock.items[40211] = 0
+    wowmock.setClass("Death Knight", "DEATHKNIGHT")
+    SetBuild("unholy_morb")
+    RotaCore.Profiles:SetActiveProfile("dk_unholy_morb_pve")
+    local said0 = {}
+    local add0 = _G.DEFAULT_CHAT_FRAME.AddMessage
+    _G.DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said0[#said0 + 1] = msg end
+    Prepull:Arm()
+    tick()
+    _G.DEFAULT_CHAT_FRAME.AddMessage = add0
+    Assert(not Prepull.armed and btn:IsShown() and said0[1] and said0[1]:find("nada para tirar", 1, true),
+        "Pre-Pull: sin nada para tirar avisa por chat y el boton sigue disponible")
+    wowmock.items[40211] = 2
+    wowmock.setClass("Mage", "MAGE")
+    SetBuild("arcane")
+    RotaCore.Profiles:SetActiveProfile("mag_arcane_pve")
+    tick()
+    Assert(btn:IsShown(), "Pre-Pull: Arcano tambien tiene pre-pull (todas las builds tienen)")
+    _G.RotaCoreDB.settings.showPrepull = false
+    tick()
+    Assert(not btn:IsShown(), "Pre-Pull: con la casilla destildada el boton no aparece")
+    _G.RotaCoreDB.settings.showPrepull = nil
+    wowmock.clearAuras("player")
+
+    -- DK Frost: Glyph of Army of the Dead (toggle) en el pre-pull
+    wowmock.setClass("Death Knight", "DEATHKNIGHT")
+    SetBuild("frost")
+    wowmock.clearGlyphs()
+    wowmock.setGlyph(2, 60200, "Glyph of Army of the Dead")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    RotaCore.Profiles:SetActiveProfile("dk_frost_pve")
+    local ir = RotaCore.Profiles:GetActiveProfile()
+    Assert(Glyphs:On(ir, "army"), "Glifos: Glyph of Army of the Dead detectado y activo")
+    Prepull.hiddenUntilCombatEnds = false
+    Prepull:Arm()
+    m = tick()
+    Assert(m == "AOTD", "Pre-Pull DK Frost con el glifo -> Army of the Dead")
+    Glyphs:SetOff(ir, "army", true)
+    m = tick()
+    Assert(m ~= "AOTD", "Glifos: apagado en Opciones -> Army of the Dead sale del pre-pull")
+    Prepull:Disarm("cancel")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    RotaCore.Profiles:SetActiveProfile("dk_frost_pve")
+    ir = RotaCore.Profiles:GetActiveProfile()
+    Assert(Glyphs:IsOff(ir, "army"), "Glifos: el apagado sobrevive a un nuevo escaneo con los mismos talentos")
+    local said = {}
+    local oldAdd = _G.DEFAULT_CHAT_FRAME.AddMessage
+    _G.DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said[#said + 1] = msg end
+    local savedTabs = wowmock.talents.tabs
+    wowmock.talents.tabs = { { name = "Blood", pointsSpent = 0, talents = {} },
+        { name = "Frost", pointsSpent = 51, talents = {} }, { name = "Unholy", pointsSpent = 20, talents = {} } }
+    RotaCore.State:ScanTalentsAndGlyphs()
+    _G.DEFAULT_CHAT_FRAME.AddMessage = oldAdd
+    wowmock.talents.tabs = savedTabs
+    SetBuild("frost")
+    RotaCore.Profiles:SetActiveProfile("dk_frost_pve")
+    ir = RotaCore.Profiles:GetActiveProfile()
+    local warned = false
+    for _, msg in ipairs(said) do if msg:find("Army of the Dead", 1, true) then warned = true end end
+    Assert(not Glyphs:IsOff(ir, "army") and warned, "Glifos: al cambiar de talentos el apagado vence y avisa por chat")
+    local panel = RotaCore.Options and RotaCore.Options.panel
+    if panel and panel.RefreshGlyphs then
+        panel.ShowPage(1)
+        Assert(panel.glyphChecks[1].key == "army" and panel.glyphChecks[1]:IsShown() and panel.glyphChecks[1]:GetChecked(),
+            "Opciones: la build DK Frost muestra el toggle de Glyph of Army of the Dead, prendido")
+        Assert(not panel.glyphChecks[2]:IsShown(), "Opciones: casillas de glifos sobrantes ocultas")
+    end
+    wowmock.clearGlyphs()
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(not Glyphs:On(ir, "army"), "Glifos: sin el glifo puesto, glyphOn es falso")
+    -- Cliente en espanol: "Glifo de " + el hechizo traducido; y un glifo nuevo sin traducir ("Glyph of ...")
+    wowmock.registerSpell(42650, "Ejército de los muertos")
+    wowmock.clearGlyphs()
+    wowmock.setGlyph(1, 60201, "Glifo de Ejército de los muertos")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(Glyphs:On(ir, "army"), "Glifos: detecta 'Glifo de' + el hechizo traducido (cliente en español)")
+    wowmock.clearGlyphs()
+    wowmock.setGlyph(1, 60202, "Glyph of Ejército de los muertos")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(Glyphs:On(ir, "army"), "Glifos: detecta un glifo sin traducir ('Glyph of') en cliente en español")
+    wowmock.registerSpell(42650, "Army of the Dead")
+
+    -- DBM: apagado por defecto; prendido, el temporizador de pull arma el pre-pull a prepullLead segundos
+    wowmock.clearAuras("player")
+    Prepull.armed, Prepull.hiddenUntilCombatEnds, Prepull.pullAt = false, false, nil
+    btn:GetScript("OnEvent")(btn, "CHAT_MSG_ADDON", "D4", "PT\t10")
+    Assert(Prepull.pullAt == nil, "DBM: con la opción apagada no hace nada")
+    _G.RotaCoreDB.settings.dbmPull = true
+    btn:GetScript("OnEvent")(btn, "CHAT_MSG_ADDON", "D4", "PT\t15")
+    tick()
+    Assert(not Prepull.armed and Prepull.pullAt ~= nil, "DBM: con el pull lejos todavía no arma")
+    Prepull.pullAt = GetTime() + Prepull:Lead() - 0.1
+    tick()
+    Assert(Prepull.armed, "DBM: faltando prepullLead segundos arma el pre-pull solo")
+    btn:GetScript("OnEvent")(btn, "CHAT_MSG_ADDON", "D4", "PT\t0")
+    Assert(not Prepull.armed, "DBM: pull cancelado -> desarma")
+    _G.RotaCoreDB.settings.dbmPull = nil
+
+    wowmock.resetDefaultGlyphs()
+    RotaCore.State:ScanTalentsAndGlyphs()
+    _G.RotaCoreDB.charGlyphOff = nil
+    Glyphs.charOff = nil
+    Prepull.armed = false
+end
+SuitePrepullGlyphs()
+
 -- ----------------------------------------------------------------------------
 -- Brujo Affliction: proyeccion de casteo, tiempo real con celeridad y lookahead
 -- ----------------------------------------------------------------------------
 local function SuiteAfflictionLookahead()
     print("\n[Suite] Warlock Affliction Lookahead & Casting")
     wowmock.setClass("Warlock", "WARLOCK")
+    wowmock.setGlyph(1, 63320, "Glyph of Life Tap")
+    RotaCore.State:ScanTalentsAndGlyphs()
     SetBuild("affliction")
     RotaCore.Profiles:SetActiveProfile("wl_affliction_pve")
     _G.RotaCoreDB.settings.aoeMode = "OFF"

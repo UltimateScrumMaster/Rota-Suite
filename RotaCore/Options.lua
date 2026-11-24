@@ -342,6 +342,7 @@ function Options:Init()
             RotaCore.UI:UpdateButtonStates()
         end
         RefreshStatus()
+        if panel.RefreshGlyphs then panel.RefreshGlyphs() end
     end
     buildDropDown.ApplyBuildSelection = ApplyBuildSelection
 
@@ -684,7 +685,70 @@ function Options:Init()
             b:SetScript("OnLeave", function(f) f:SetBackdropBorderColor(0.5, 0.5, 0.55, 1) end)
         end
     end
-    for _, cb in ipairs({ lockCb, minimapCb, burstCb, learningCb, captureCb, compareCb, useV1Cb }) do StyleCheck(cb) end
+    -- Glifos de la build activa (RotaCore/Glyphs.lua): una casilla por glifo declarado en el preset
+    local glyphHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    glyphHeader:SetText("Glifos que cambian esta rotación:")
+    local glyphChecks = {}
+    -- shortcut: 3 casillas alcanzan para los glifos de hoy (1 por build); si una build declara mas, agregar casillas
+    for i = 1, 3 do
+        local cb = MakeCheck("RotaOptionsGlyphCb" .. i, "", glyphHeader, -4, function() return false end, function(on)
+            local ir = RotaCore.Profiles and RotaCore.Profiles:GetActiveProfile()
+            if ir and glyphChecks[i].key and RotaCore.Glyphs then
+                RotaCore.Glyphs:SetOff(ir, glyphChecks[i].key, not on)
+            end
+        end)
+        glyphChecks[i] = cb
+    end
+    local function RefreshGlyphs()
+        local ir = RotaCore.Profiles and RotaCore.Profiles:GetActiveProfile()
+        local keys = {}
+        for k in pairs((ir and ir.glyphs) or {}) do keys[#keys + 1] = k end
+        table.sort(keys)
+        if #keys == 0 then glyphHeader:Hide() else glyphHeader:Show() end
+        for i, cb in ipairs(glyphChecks) do
+            local key = keys[i]
+            cb.key = key
+            if key and panel.currentPage == 1 then
+                local def = ir.glyphs[key]
+                local detected = RotaCore.Glyphs and RotaCore.Glyphs:Detected(def)
+                cb:SetChecked(detected and not RotaCore.Glyphs:IsOff(ir, key))
+                cb.label:SetText(detected and def.name or ("|cFF888888" .. def.name .. " (no lo tenés puesto)|r"))
+                cb.tooltipText = def.desc
+                cb.detected = detected
+                if cb.Enable then if detected then cb:Enable() else cb:Disable() end end
+                cb:Show()
+            else
+                cb:Hide()
+            end
+        end
+        if panel.currentPage ~= 1 then glyphHeader:Hide() end
+    end
+    for _, cb in ipairs(glyphChecks) do
+        cb:SetScript("OnEnter", function(f)
+            if f.tooltipText and _G.GameTooltip then
+                _G.GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
+                _G.GameTooltip:AddLine(f.tooltipText, 1, 1, 1, true)
+                if f.detected then
+                    _G.GameTooltip:AddLine("Si lo apagás, queda apagado hasta que cambies de talentos.", 0.7, 0.7, 0.7, true)
+                else
+                    _G.GameTooltip:AddLine("No lo tenés puesto: cuando lo pongas, se activa solo.", 0.7, 0.7, 0.7, true)
+                end
+                _G.GameTooltip:Show()
+            end
+        end)
+        cb:SetScript("OnLeave", function() if _G.GameTooltip then _G.GameTooltip:Hide() end end)
+    end
+
+    -- Boton Pre-Pull (RotaCore/Prepull.lua)
+    local prepullCb = MakeCheck("RotaOptionsPrepullCb", "Mostrar el botón Pre-Pull (en builds que tienen pre-pull)",
+        minimapCb, -6, function() return Settings().showPrepull ~= false end,
+        function(val) Settings().showPrepull = val end)
+    local dbmCb = MakeCheck("RotaOptionsDbmPullCb", "Armar el pre-pull solo con el temporizador de pull de DBM",
+        prepullCb, -4, function() return Settings().dbmPull == true end,
+        function(val) Settings().dbmPull = val end)
+
+    for _, cb in ipairs({ lockCb, minimapCb, burstCb, learningCb, captureCb, compareCb, useV1Cb, prepullCb, dbmCb,
+        glyphChecks[1], glyphChecks[2], glyphChecks[3] }) do StyleCheck(cb) end
     for b, w in pairs({ [editBtn] = 150, [scanBtn] = 150, [probeBtn] = 150, [resetBtn] = 150, [traceBtn] = 150,
         [debugBtn] = 110, [apiBtn] = 110, [platesBtn] = 120, [clearBtn] = 80, [scaleBtnMinus] = 26, [scaleBtnPlus] = 26 }) do
         StyleButton(b, w)
@@ -708,11 +772,14 @@ function Options:Init()
     Anchor(buildLabel, pagesTop, 0)
     Anchor(editBtn, learningCb, -14)
     Anchor(useV1Cb, editBtn, -8)
-    Anchor(rotHelp, useV1Cb, -14)
+    Anchor(glyphHeader, useV1Cb, -14)
+    Anchor(rotHelp, glyphChecks[3], -14)
     -- Pantalla
     Anchor(lockCb, pagesTop, 0)
     Anchor(minimapCb, lockCb, -6)
-    Anchor(burstModeLabel, minimapCb, -14)
+    Anchor(prepullCb, minimapCb, -6)
+    Anchor(dbmCb, prepullCb, -4)
+    Anchor(burstModeLabel, dbmCb, -14)
     Anchor(resetBtn, burstModeLabel, -20)
     Anchor(screenHelp, resetBtn, -14)
     -- Herramientas
@@ -724,9 +791,9 @@ function Options:Init()
 
     local PAGES = {
         { title = "Rotación", items = { buildLabel, buildDropDown, aoeLabel, aoeModeDropDown, burstCb, learningCb,
-            editBtn, useV1Cb, rotHelp } },
+            editBtn, useV1Cb, glyphHeader, glyphChecks[1], glyphChecks[2], glyphChecks[3], rotHelp } },
         { title = "Pantalla", items = { lockCb, minimapCb, burstModeLabel, burstModeDropDown, scaleLabel,
-            scaleBtnMinus, scaleBtnPlus, resetBtn, screenHelp } },
+            scaleBtnMinus, scaleBtnPlus, resetBtn, screenHelp, prepullCb, dbmCb } },
         { title = "Avanzado", items = { advHelp, traceBtn, debugBtn, apiBtn, platesBtn, scanBtn, probeBtn, fusionLabel,
             fusionDropDown, v2Header, captureCb, compareCb, v2Status, clearBtn, tutorialHeader, tutorialContent } },
     }
@@ -740,6 +807,8 @@ function Options:Init()
             if t then t:SetText(i == index and ("|cFFFFD100[ " .. page.title .. " ]|r") or ("|cFFAAAAAA" .. page.title .. "|r")) end
         end
         Settings().optionsTab = index
+        panel.currentPage = index
+        RefreshGlyphs()
         panel.currentPage = index
     end
     local prevTab
@@ -760,7 +829,8 @@ function Options:Init()
     panel.ShowPage, panel.tabButtons = ShowPage, tabButtons
     ShowPage(Settings().optionsTab or 1)
 
-    panel:SetScript("OnShow", function() RefreshStatus(); RefreshV2() end)
+    panel:SetScript("OnShow", function() RefreshStatus(); RefreshV2(); RefreshGlyphs() end)
+    panel.RefreshGlyphs, panel.glyphChecks, panel.prepullCb, panel.dbmCb = RefreshGlyphs, glyphChecks, prepullCb, dbmCb
 
     self.panel = panel
     self.RefreshStatus = RefreshStatus

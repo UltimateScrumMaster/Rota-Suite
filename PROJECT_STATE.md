@@ -16,6 +16,13 @@ Rota Suite: addon de sugerencias de rotación para WoW 3.3.5a (Interface 30300),
 - **Modo aprendizaje:** muestra debajo del icono por qué sugiere cada habilidad.
 - **Aviso de talentos:** si la build elegida necesita un hechizo de talento que el personaje no tiene, avisa una
   vez por chat al entrar en combate.
+- **Botón Pre-Pull** (movible por separado): todas las builds tienen lista de pre-pull (poción más lo propio de cada
+  una). Muestra una vez esa rotación, con la etiqueta PRE, hasta el pull. Se oculta en combate y vuelve al salir.
+  También con `/rc prepull` (para macros). Opcional y apagado por defecto: lo arma el temporizador de pull de DBM.
+- **Glifos que cambian la rotación:** toggles en Opciones > Rotación, detectados solos; si se apaga uno, queda
+  apagado (para todas las builds del personaje, por talento dual) hasta cambiar de talentos. Se detectan con el
+  cliente en inglés o en español. Hoy: Army of the Dead (DK), Shattering Throw (Guerrero), Omen of Clarity
+  (Druida Feral), Life Tap (Brujo).
 
 ## Cómo funcionan las rotaciones
 
@@ -59,7 +66,7 @@ DK y Paladín se juegan en el servidor. El resto de las clases sigue las guías 
 
 Todo se verifica offline, sin el juego (el CI de GitHub lo corre en cada PR):
 
-- `lua5.1 tools/test_runner.lua`: 933 tests.
+- `lua5.1 tools/test_runner.lua`: 973 tests.
 - `lua5.1 tools/golden.lua check`: cada build se compara con su referencia (200 situaciones: un tercio de un
   objetivo, un tercio con 2 enemigos y un tercio AoE) y se mide que no cree basura en memoria a 20 evaluaciones por
   segundo.
@@ -74,6 +81,11 @@ Cuando un cambio modifica a propósito lo que sugiere una build, se actualiza so
 2. Versión 2.0.0: borrar las rotaciones viejas (presets `*_v1` y evaluadores `Evaluate*` de los módulos), que hoy
    quedan como respaldo con la casilla "Usar la rotación vieja".
 3. Ver el panel de opciones y el editor nuevos en el cliente y ajustar lo que haga falta.
-4. Partes avanzadas de las guías que todavía no están: bearweaving del Druida Feral, renovar Savage Roar antes de
+4. Verificar en el juego el formato del aviso de pull de DBM (prefijo "D4", "PT\t<segundos>"): se tomó del formato
+   conocido de DBM para WotLK y no se probó en el servidor.
+5. Glyph of Quick Pain (Sacerdote Sombras): falta saber qué parte de la rotación cambia con el glifo para hacerlo
+   toggle.
+6. Ajustar los pre-pull de las clases que el autor no juega con el feedback de quienes las juegan.
+7. Partes avanzadas de las guías que todavía no están: bearweaving del Druida Feral, renovar Savage Roar antes de
    tiempo, Lock and Load "434" del Cazador Survival, Shadowflame del Brujo, Corruption en movimiento (Destruction),
    openers por clase.

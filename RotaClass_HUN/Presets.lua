@@ -215,6 +215,13 @@ if ready("AIMED") then return "AIMED" end
         Cooldowns("sv"),
     })
 
+-- Pre-pull (boton Pre-Pull, una vez): poción
+for _, key in ipairs({ "HUN_BEAST_MASTERY_PVE", "HUN_MARKSMANSHIP_PVE", "HUN_SURVIVAL_PVE" }) do
+    Presets[key].lists.prepull = { RotaCore.PrepullPotion("melee") }
+    Presets[key].meta.prepullLead = 2
+    Presets[key].meta.prepullNote = "Poción justo antes del pull."
+end
+
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.HUN_BEAST_MASTERY_PVE.meta.requires = { "BW" }
 Presets.HUN_MARKSMANSHIP_PVE.meta.requires = { "CHIMERA" }

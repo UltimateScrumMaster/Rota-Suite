@@ -18,6 +18,10 @@ Rebuffed (`docs/REBUFFED.md`).
 1. Copiá las carpetas `RotaCore`, `RotaEditor`, `RotaProbe` y la `RotaClass_*` de tu clase en `Interface/AddOns`.
 2. En el juego: click en el botón del minimapa abre las opciones; click derecho abre el editor de rotaciones.
 
+Además del HUD hay un botón **Pre-Pull** que muestra una vez la rotación de antes del pull (opcional: que lo arme
+solo el temporizador de pull de DBM), y toggles para los glifos que cambian la rotación de tu build
+(Opciones > Rotación). Funciona con el cliente en inglés o en español.
+
 ## Para desarrollar
 
 Requiere Lua 5.1 y luacheck. Todo se prueba offline, sin el juego:

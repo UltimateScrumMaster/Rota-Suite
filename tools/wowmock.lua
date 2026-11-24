@@ -1061,6 +1061,14 @@ function wowmock.init()
         end
         return nil
     end
+    wowmock.items = {}
+    wowmock.itemCooldowns = {}
+    _G.GetItemCount = function(id) return wowmock.items[id] or 0 end
+    _G.GetItemCooldown = function(id)
+        local c = wowmock.itemCooldowns[id]
+        if c then return c.start, c.duration, 1 end
+        return 0, 0, 1
+    end
     _G.UnitChannelInfo = function(unit)
         local c = wowmock.channeling and wowmock.channeling[unit]
         if c and (c.endMs / 1000) > wowmock.now then

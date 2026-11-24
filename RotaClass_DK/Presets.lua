@@ -669,10 +669,13 @@ if dk.wantBT and bloodTapReady() and inCombat ~= false then return "BT" end
 if burst() and known("GARG") and cd("GARG") > 150 and combat() then
     if gloves() then return "HYPER" end
     if spellReady("BERSERKING") then return "BERSERKING" end
-    if spellReady("SPEED_POT") then return "SPEED_POT" end
+    local pot = potion("SPEED_POT")
+    if pot then return pot end
     local ready = runes.bloodReady + runes.frostReady + runes.unholyReady + runes.deathReady
     if cd("ERW") <= 0 and ready <= 2 then return "ERW" end
-    if var("armyOfTheDead", 1) ~= 0 and dk.targetIsBoss and cd("ERW") > 0 and known("AOTD") and spellReady("AOTD") then
+    -- Army of the Dead: solo contra jefes (los ghouls tauntean), o contra cualquiera con Glyph of Army of the Dead
+if var("armyOfTheDead", 1) ~= 0 and (dk.targetIsBoss or glyphOn("army")) and cd("ERW") > 0 and known("AOTD")
+    and spellReady("AOTD") then
         return "AOTD"
     end
 end
@@ -882,6 +885,31 @@ Presets.DK_UNHOLY_MORB_PVE_V1 = Migrate(Presets.DK_UNHOLY_MORB_PVE, UNHOLY_MAIN,
 Presets.DK_UNHOLY_DW_SS_PVE_V1 = Migrate(Presets.DK_UNHOLY_DW_SS_PVE, UNHOLY_MAIN, UNHOLY_OFF)
 
 -- Register presets automatically with RotaCore.Profiles
+-- Glifos que cambian un poco la rotacion (toggles en Opciones > Rotacion; ver RotaCore/Glyphs.lua)
+local ARMY_GLYPH = {
+    army = { name = "Glyph of Army of the Dead", spell = 42650,
+        desc = "Los ghouls no tauntean: Army of the Dead entra en el pre-pull (Frost) y en combate también fuera de jefes (Unholy)." },
+}
+for _, key in ipairs({ "DK_FROST_PVE", "DK_UNHOLY_MORB_PVE", "DK_UNHOLY_DW_SS_PVE", "DK_UNHOLY_PVE" }) do
+    Presets[key].glyphs = ARMY_GLYPH
+end
+
+-- Pre-pull (boton Pre-Pull, una vez)
+local PREPULL_POTION = RotaCore.PrepullPotion("melee")
+Presets.DK_FROST_PVE.lists.prepull = {
+    R("pre_army", "AOTD", "Con Glyph of Army of the Dead: Army of the Dead (canaliza 4 s)", [[
+if glyphOn("army") and known("AOTD") and spellReady("AOTD") then return "AOTD" end
+]]),
+    PREPULL_POTION,
+}
+Presets.DK_FROST_PVE.meta.prepullLead = 10
+Presets.DK_FROST_PVE.meta.prepullNote = "Con Glyph of Army of the Dead: Army of the Dead unos 10 s antes, después la poción."
+for _, key in ipairs({ "DK_UNHOLY_MORB_PVE", "DK_UNHOLY_DW_SS_PVE", "DK_UNHOLY_PVE" }) do
+    Presets[key].lists.prepull = { PREPULL_POTION }
+    Presets[key].meta.prepullLead = 2
+    Presets[key].meta.prepullNote = "Poción justo antes del pull. Army of the Dead va en combate, después de Empower Rune Weapon."
+end
+
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.DK_FROST_PVE.meta.requires = { "HB", "FS" }
 Presets.DK_UNHOLY_MORB_PVE.meta.requires = { "GF", "GARG" }

@@ -89,6 +89,7 @@ local BURST_SPELL_ALIASES = {
     GARG = true,
     AOTD = true,
     SPEED_POT = true,
+    WILD_POT = true,
     POT = true,
     HYPER = true,
     ENG = true,
@@ -102,7 +103,7 @@ local BURST_SPELL_ALIASES = {
 
 local function IsActionKnown(state, action)
     if not action or action == "WAIT" then return true end
-    if action == "GLOVES" or action == "HYPER" or action == "SPEED_POT" or action == "POT"
+    if action == "GLOVES" or action == "HYPER" or action == "SPEED_POT" or action == "WILD_POT" or action == "POT"
         or action == "ENG" or action == "POTION" then
         return true
     end
@@ -174,6 +175,14 @@ function RotaCore.Rule(id, action, note, code)
     return { id = id, enabled = true, type = "customLua", action = action, note = note, code = code }
 end
 
+--- Regla de poción para listas prepull: "melee" toma Potion of Speed; "caster", Wild Magic o si no Speed.
+--- Solo si la tenés, no está en cooldown, no tenés el buff y no estás canalizando.
+function RotaCore.PrepullPotion(kind)
+    local pick = (kind == "caster") and 'potion("WILD_POT") or potion("SPEED_POT")' or 'potion("SPEED_POT")'
+    return RotaCore.Rule("pre_potion", kind == "caster" and "WILD_POT" or "SPEED_POT",
+        "Poción justo antes del pull", "local p = " .. pick .. "\nif p and not channeling() then return p end\n")
+end
+
 --- Lista de reglas donde algunos elementos son grupos de reglas: { r1, { r2, r3 }, r4 } -> { r1, r2, r3, r4 }
 function RotaCore.Flatten(list)
     local out = {}
@@ -227,6 +236,14 @@ function Compiler:Compile(ir)
     if ir.lists and ir.lists.off then
         for i, rule in ipairs(ir.lists.off) do
             offRules[i] = CompileRule(rule)
+        end
+    end
+
+    -- Lista de pre-pull (opcional): la usa el boton Pre-Pull una vez (RotaCore/Prepull.lua)
+    local prepullRules = {}
+    if ir.lists and ir.lists.prepull then
+        for i, rule in ipairs(ir.lists.prepull) do
+            prepullRules[i] = CompileRule(rule)
         end
     end
 
@@ -334,13 +351,13 @@ function Compiler:Compile(ir)
         return nil
     end
 
-    local function EvaluatorOff(state)
-        -- Off-GCD Priority List
-        for i = 1, #offRules do
-            local r = offRules[i]
+    -- Listas off y pre-pull: la primera regla que devuelve una habilidad conocida gana
+    local function RunList(rules, state, ignoreBurst)
+        for i = 1, #rules do
+            local r = rules[i]
             if r.enabled then
-                local burstOk = (not r.isBurst) or (state.burstMode ~= false)
-                if state.burstMode == false and BURST_SPELL_ALIASES[r.action] and r.action ~= "BT" then
+                local burstOk = ignoreBurst or (not r.isBurst) or (state.burstMode ~= false)
+                if not ignoreBurst and state.burstMode == false and BURST_SPELL_ALIASES[r.action] and r.action ~= "BT" then
                     burstOk = false
                 end
                 local aoeOk = true
@@ -369,9 +386,14 @@ function Compiler:Compile(ir)
         return nil
     end
 
+    local function EvaluatorOff(state) return RunList(offRules, state) end
+    -- El pre-pull lo pide el jugador con el boton: no lo frena Burst OFF (poción, Army of the Dead)
+    local function EvaluatorPrepull(state) return RunList(prepullRules, state, true) end
+
     return {
         evaluatorMain = EvaluatorMain,
         evaluatorOff = EvaluatorOff,
+        evaluatorPrepull = (#prepullRules > 0) and EvaluatorPrepull or nil,
         resetSequences = ResetSequences,
         disableSequences = DisableSequences,
         enableSequences = EnableSequences,

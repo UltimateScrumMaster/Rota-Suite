@@ -241,6 +241,18 @@ if burst() and combat() and ready("RACIAL") then return "RACIAL" end
     },
 }
 
+local R = RotaCore.Rule
+
+-- Pre-pull (boton Pre-Pull, una vez): Divine Plea y poción
+Presets.PAL_RETRIBUTION_PVE.lists.prepull = {
+    R("ret_pre_plea", "DP", "Divine Plea antes del pull", [[
+if buff("Divine Plea") <= 0 and ready("DP") then return "DP" end
+]]),
+    RotaCore.PrepullPotion("melee"),
+}
+Presets.PAL_RETRIBUTION_PVE.meta.prepullLead = 3
+Presets.PAL_RETRIBUTION_PVE.meta.prepullNote = "Divine Plea y poción unos 3 s antes."
+
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.PAL_RETRIBUTION_PVE.meta.requires = { "CS", "DS" }
 

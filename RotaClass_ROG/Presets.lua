@@ -378,7 +378,7 @@ end
 if combat() and burst() then
     if gloves() then return "GLOVES" end
     if ready("RACIAL") then return "RACIAL" end
-    if var("usePotion", 0) == 1 and ready("SPEED_POT") then return "SPEED_POT" end
+    if var("usePotion", 0) == 1 and potion("SPEED_POT") then return "SPEED_POT" end
 end
 ]]),
     R("ass_tricks", "TRICKS", "Tricks of the Trade (var tricks)", [[
@@ -429,7 +429,7 @@ end
 if rog.arRemaining > 0 or rog.bladeFlurryRemaining > 0 then
     if gloves() then return "GLOVES" end
     if ready("RACIAL") then return "RACIAL" end
-    if var("usePotion", 0) == 1 and ready("SPEED_POT") then return "SPEED_POT" end
+    if var("usePotion", 0) == 1 and potion("SPEED_POT") then return "SPEED_POT" end
 end
 ]]),
 }
@@ -496,6 +496,18 @@ Presets.ROG_ASSASSINATION_PVE_V1 = Migrate(Presets.ROG_ASSASSINATION_PVE, ASSASS
 Presets.ROG_COMBAT_PVE_V1 = Migrate(Presets.ROG_COMBAT_PVE, COMBAT_MAIN, COMBAT_OFF)
 Presets.ROG_SUBTLETY_PVE_V1 = Migrate(Presets.ROG_SUBTLETY_PVE, SUBTLETY_MAIN, SUBTLETY_OFF)
 Presets.ROG_SUBTLETY_DAGGER_PVE_V1 = Migrate(Presets.ROG_SUBTLETY_DAGGER_PVE, SUBTLETY_MAIN, SUBTLETY_OFF)
+
+-- Pre-pull (boton Pre-Pull, una vez): Tricks of the Trade (con el tanque de objetivo) y poción
+for _, key in ipairs({ "ROG_ASSASSINATION_PVE", "ROG_COMBAT_PVE", "ROG_SUBTLETY_PVE", "ROG_SUBTLETY_DAGGER_PVE" }) do
+    Presets[key].lists.prepull = {
+        R("rog_pre_tricks", "TRICKS", "Tricks of the Trade sobre el tanque (var tricks)", [[
+if var("tricks", 0) == 1 and ready("TRICKS") then return "TRICKS" end
+]]),
+        RotaCore.PrepullPotion("melee"),
+    }
+    Presets[key].meta.prepullLead = 2
+    Presets[key].meta.prepullNote = "Poción justo antes del pull (y Tricks of the Trade al tanque si tildaste tricks)."
+end
 
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.ROG_ASSASSINATION_PVE.meta.requires = { "MUT" }

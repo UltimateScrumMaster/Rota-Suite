@@ -220,6 +220,24 @@ Presets.SHA_ENHANCEMENT_PVE_V1 = RotaCore.V1Of(Presets.SHA_ENHANCEMENT_PVE, {
     off = { Hook("sha_enh_off", "FSPIRIT", "Enhancement Shaman: imbues y cooldowns", "evaluateShaEnhancementOff") },
 })
 
+-- Pre-pull (boton Pre-Pull, una vez)
+Presets.SHA_ELEMENTAL_PVE.lists.prepull = {
+    RotaCore.PrepullPotion("caster"),
+    R("ele_pre_lb", "LB", "Lightning Bolt precasteado", [[
+if known("LB") then return "LB" end
+]]),
+}
+Presets.SHA_ELEMENTAL_PVE.meta.prepullLead = 3
+Presets.SHA_ELEMENTAL_PVE.meta.prepullNote = "Poción y Lightning Bolt unos 3 s antes."
+Presets.SHA_ENHANCEMENT_PVE.lists.prepull = {
+    R("enh_pre_spirit", "FSPIRIT", "Feral Spirit mientras te acercás", [[
+if ready("FSPIRIT") then return "FSPIRIT" end
+]]),
+    RotaCore.PrepullPotion("melee"),
+}
+Presets.SHA_ENHANCEMENT_PVE.meta.prepullLead = 3
+Presets.SHA_ENHANCEMENT_PVE.meta.prepullNote = "Feral Spirit y poción unos 3 s antes."
+
 -- Hechizos de talento sin los que la build no funciona: si falta alguno, RotaCore avisa una vez por chat
 Presets.SHA_ELEMENTAL_PVE.meta.requires = { "TS" }
 Presets.SHA_ENHANCEMENT_PVE.meta.requires = { "SS", "LL" }

@@ -19,6 +19,8 @@ GCD) y `off` (icono chico, cooldowns fuera de GCD).
 | `RotaCore/RotaCore.lua` | carga de clase/build, `UpdateAndEvaluate`, comandos `/rc`, `CheckRequires` |
 | `RotaCore/UI.lua`, `Options.lua`, `Minimap.lua` | HUD, panel único de opciones, botón del minimapa |
 | `RotaCore/Snapshot.lua` | captura de "situaciones" del juego (para tests) y comparador v1/nueva |
+| `RotaCore/Glyphs.lua` | toggles de glifos por build (`preset.glyphs`, `glyphOn()`), apagado por personaje hasta cambiar de talentos |
+| `RotaCore/Prepull.lua` | botón Pre-Pull: lista `prepull` una vez, cortada por combate, fin de lista o tiempo |
 | `RotaClass_<X>/RotaClass_<X>.lua` | datos de la clase: IDs, provider de estado (`state.dk`, `state.rog`...), detección de build, funciones propias para reglas |
 | `RotaClass_<X>/Presets.lua` | las builds: catálogo de hechizos, `vars`, `meta.requires`, listas de reglas |
 | `RotaEditor/` | editor en el juego (reglas, código, IDs, ayuda); carga bajo demanda |
@@ -41,6 +43,14 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
 - `return false` corta la lista. `return wait("X", seg)` muestra la habilidad "esperando".
 - Nombres sin definir caen al estado: `dru.rip`, `rog.cp`, `runes.bloodReady`, `power` (ojo: `power` es una
   función; usá `power()`).
+- Glifos que cambian un poco la rotación: declaralos en `preset.glyphs` con `name` (en inglés), `spell` (ID del
+  hechizo que el glifo modifica: con eso se detecta "Glyph of"/"Glifo de" + el nombre traducido por el cliente) y,
+  si los conocés, `ids` (IDs del hechizo del glifo). Preguntá `glyphOn("clave")` en las
+  reglas (no `glyph()`, que ignora el toggle). Si un glifo cambia mucho la rotación, es otra build. Un test falla si
+  `glyphOn` usa una clave que no está en `preset.glyphs`.
+- `lists.prepull` (opcional): solo lo de antes del pull. Poné `meta.prepullLead` (segundos) y `meta.prepullNote`
+  (texto del tooltip). El pre-pull no lo frena Burst OFF. La poción es un objeto: usá `potion("SPEED_POT")` /
+  `potion("WILD_POT")` o `RotaCore.PrepullPotion("melee"|"caster")`, nunca `ready`.
 - La lógica compleja de una clase va en una función del módulo registrada con `Sandbox:AddHelper` y documentada en
   `docs/FUNCIONES.md` (ej. predicción de runas del DK). Una función devuelve datos o el alias a mostrar; la
   prioridad tiene que quedar visible en las reglas.

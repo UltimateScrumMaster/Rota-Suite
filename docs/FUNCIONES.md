@@ -11,7 +11,11 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
 - Sin `return`: la regla no aplica y se pasa a la siguiente.
 - `return false`: corta la lista. No se mira ninguna regla más.
 - `return wait("ALIAS", segundos)`: muestra la habilidad "esperando", con espiral y segundos en el icono.
-- Para guardar un valor: `local m = mana()`. Lua no puede escribir en una variable que se pasa como parámetro, así que la función devuelve el valor.
+- Para guardar un valor: `local m = mana()`.
+- Una build puede tener una lista `prepull`: la muestra el botón Pre-Pull una vez y termina al entrar en combate.
+  Ahí solo va lo de antes del pull (poción, precasteos, Army of the Dead); lo de después va en `main` / `off`.
+- La poción es un objeto, no un hechizo: usá `potion("SPEED_POT")` o `potion("WILD_POT")`. Para la lista prepull
+  está `RotaCore.PrepullPotion("melee")` / `("caster")` en el preset. Lua no puede escribir en una variable que se pasa como parámetro, así que la función devuelve el valor.
 
 ## Generales (todas las clases)
 
@@ -21,6 +25,7 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
 | `known("X")` | la conocés |
 | `cd("X")` | segundos de cooldown (0 = lista) |
 | `gcd()` | segundos que faltan del GCD |
+| `castTime("X")` | tiempo de casteo real en segundos, con haste (0 si es instantáneo) |
 | `mana()` | % de mana (0 en clases sin mana) |
 | `rage()`, `energy()`, `runic()` | valor de ira, energía, poder rúnico |
 | `power()`, `powerPct()` | recurso principal: valor y % |
@@ -29,7 +34,7 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
 | `targetHP()` | % de vida del objetivo |
 | `targetType()` | `"Undead"`, `"Demon"`, `"Beast"`, `"Humanoid"`, `"Elemental"`, `"Dragonkin"`, `"Giant"`, `"Mechanical"`, `"Critter"` (también con el cliente en español) |
 | `targetBoss()` | el objetivo es un jefe |
-| `buff("Nombre")` | segundos que le quedan a un buff tuyo |
+| `buff("Nombre")` o `buff(ID)` | segundos que le quedan a un buff tuyo (con el ID funciona en cualquier idioma del cliente) |
 | `buffStacks("Nombre")` | stacks de un buff |
 | `debuff("Nombre")` | segundos de un debuff tuyo en el objetivo |
 | `debuffStacks("Nombre")` | stacks de un debuff tuyo |
@@ -38,9 +43,13 @@ if ready("CONS") and mana() >= 40 then return "CONS" end
 | `enemies()` | enemigos contados para el AoE |
 | `combat()` | en combate |
 | `moving()` | te estás moviendo |
+| `channeling()` | estás canalizando (Army of the Dead, Mind Flay...) |
+| `itemCount(ID)` | cuántos tenés de un objeto en las bolsas, ej. `itemCount(40211)` para Potion of Speed |
+| `potion("SPEED_POT")` / `potion("WILD_POT")` | la poción si está lista (la tenés, sin cooldown y sin su buff), si no `nil`: `local p = potion("SPEED_POT") if p then return p end` |
 | `burst()` | Burst activado |
 | `gloves()` | guantes de ingeniero listos |
-| `glyph("Nombre")` | tenés el glifo |
+| `glyph("Nombre")` | tenés el glifo puesto (sin importar los toggles) |
+| `glyphOn("clave")` | el glifo de la build (`preset.glyphs`) está puesto y no lo apagaste en Opciones: usá esta para cambiar la rotación |
 | `talent("Nombre")` | tenés al menos 1 punto en el talento |
 | `var("nombre", defecto)` | variable del preset (se ajusta en el editor) |
 | `say("texto")` | motivo que se ve en modo aprendizaje |
