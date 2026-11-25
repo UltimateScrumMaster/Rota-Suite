@@ -367,12 +367,18 @@ function Options:Init()
     end
     panel.buildDropDown = buildDropDown
 
-    -- Texto del desplegable con la build actual
-    for _, opt in ipairs(GetBuildOptions()) do
-        if opt.value == RotaCore:GetSelectedBuild() and _G.UIDropDownMenu_SetText then
-            _G.UIDropDownMenu_SetText(buildDropDown, opt.text)
+    -- Desplegable = build guardada (la barra del HUD y /rc build tambien la cambian)
+    local function RefreshBuild()
+        local sel = RotaCore:GetSelectedBuild()
+        if _G.UIDropDownMenu_SetSelectedValue then _G.UIDropDownMenu_SetSelectedValue(buildDropDown, sel) end
+        for _, opt in ipairs(GetBuildOptions()) do
+            if opt.value == sel and _G.UIDropDownMenu_SetText then
+                _G.UIDropDownMenu_SetText(buildDropDown, opt.text)
+            end
         end
     end
+    RefreshBuild()
+    panel.RefreshBuild = RefreshBuild
 
     -- Modo AoE: AUTO (detecta enemigos) / ON (forzado) / OFF  (= /rc aoe)
     local function CurAoE()
@@ -829,7 +835,7 @@ function Options:Init()
     panel.ShowPage, panel.tabButtons = ShowPage, tabButtons
     ShowPage(Settings().optionsTab or 1)
 
-    panel:SetScript("OnShow", function() RefreshStatus(); RefreshV2(); RefreshGlyphs() end)
+    panel:SetScript("OnShow", function() RefreshStatus(); RefreshV2(); RefreshGlyphs(); panel.RefreshBuild() end)
     panel.RefreshGlyphs, panel.glyphChecks, panel.prepullCb, panel.dbmCb = RefreshGlyphs, glyphChecks, prepullCb, dbmCb
 
     self.panel = panel

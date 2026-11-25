@@ -395,7 +395,11 @@ function RotaClass_DK:DetectBuild()
     -- 3. Spec Decision Logic
     -- Los talentos mandan. Por hechizo solo si la API de talentos no dio puntos:
     -- GetSpellCooldown(id) devuelve datos aunque el hechizo no se conozca, y State.data queda viejo tras un respec.
-    if bloodPoints + frostPoints + unholyPoints == 0 then
+    -- Al loguear el cliente puede dar 0 puntos hasta que llegan los talentos: sin ellos no se distingue Morb de 2H
+    -- (Nerves of Cold Steel es pasivo). En AUTO no se cambia la build con esa adivinanza; se reintenta (OnUpdate).
+    local talentsPending = (bloodPoints + frostPoints + unholyPoints == 0)
+    RotaClass_DK.talentsPending = talentsPending
+    if talentsPending then
         if DKHasSpell(hbName) then hasHowlingBlast = true end
         if DKHasSpell(ssName) then hasScourgeStrike = true end
         local sData = RotaCore.State and RotaCore.State.data
@@ -436,6 +440,7 @@ function RotaClass_DK:DetectBuild()
     -- 4. Apply manual user override from Settings if configured
     local selected = RotaCore.GetSelectedBuild and RotaCore:GetSelectedBuild() or "auto"
     local activePreset = presetId
+    local manual = true
 
     if selected == "frost" or selected == "Frost" or selected == "Frost (DW)" then
         activePreset = "dk_frost_pve"
@@ -449,6 +454,23 @@ function RotaClass_DK:DetectBuild()
     elseif selected == "unholy_2h" or selected == "unholy" or selected == "Unholy (2H)" or selected == "2h" then
         activePreset = "dk_unholy_2h_pve"
         RotaClass_DK.detectedBadge = "[U]"
+    else
+        manual = false
+    end
+
+    if talentsPending and not manual and not hasHowlingBlast then
+        -- AUTO sin talentos: se queda la build activa (o la guardada) hasta que el reintento lea los talentos
+        local cur = RotaCore.Profiles and RotaCore.Profiles.GetActiveProfile and RotaCore.Profiles:GetActiveProfile()
+        local curId = cur and cur.meta and (cur.meta.v1Of or cur.meta.id)
+        local db = _G.RotaCoreDB
+        local key = RotaCore.GetCharKey and RotaCore:GetCharKey()
+        local saved = db and key and db.charProfiles and db.charProfiles[key]
+        local P = RotaCore.Profiles and RotaCore.Profiles.presets
+        if curId and P and P[curId] and P[curId].meta.class == "DEATHKNIGHT" then
+            return detectedKey, curId, specName
+        elseif saved and P and P[saved] and P[saved].meta.class == "DEATHKNIGHT" then
+            activePreset = saved
+        end
     end
 
     if RotaCore.Profiles and RotaCore.Profiles.SetActiveProfile then
@@ -1657,6 +1679,16 @@ if _G.CreateFrame then
            or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_LOGIN" then
             RotaClass_DK:DetectBuild()
         end
+    end)
+    -- Talentos todavia sin cargar (0 puntos): reintentar la deteccion cada 1 s hasta que lleguen
+    -- (en Rebuffed PLAYER_TALENT_UPDATE no siempre llega despues del login)
+    local acc = 0
+    f:SetScript("OnUpdate", function(_, elapsed)
+        if not RotaClass_DK.talentsPending then return end
+        acc = acc + elapsed
+        if acc < 1 then return end
+        acc = 0
+        RotaClass_DK:DetectBuild()
     end)
     RotaClass_DK.eventFrame = f
 end

@@ -11,7 +11,8 @@ clase (podés copiar todas: solo se usa la de tu clase). Entrá al juego o hacé
 - **Icono chico:** cooldowns y habilidades fuera del GCD (Gárgola, Tiger's Fury, guantes, racial...).
 - **Espiral y segundos sobre el icono:** esa habilidad todavía no, pero viene (runas, energía, cooldown).
 - **Mini-barra debajo:**
-  - **Build:** la rotación que estás usando.
+  - **Build:** la rotación que estás usando. Click para cambiarla (es la misma que en Opciones); con el mouse encima
+    muestra qué rotación eligió AUTO.
   - **AoE:** AUTO cuenta los enemigos solo; ON lo fuerza; OFF lo apaga.
   - **Burst:** si está en OFF, guarda los cooldowns largos.
   - **Botón de la derecha:** abre las opciones.
@@ -93,4 +94,5 @@ Lo que cambies queda como rotación **Custom** de ese personaje. "Restaurar" vue
 
 ## Doble talento
 
-La build se guarda por personaje. Con AUTO, al cambiar de talentos el addon detecta la build nueva.
+La build se guarda por personaje. Con AUTO, al cambiar de talentos el addon detecta la build nueva. Al entrar al juego, hasta que cargan los talentos
+(unos segundos), sigue con la última build que usaste.

@@ -445,10 +445,10 @@ function UI:CycleBuild()
         end
     end
 
-    if RotaCore.Options and RotaCore.Options.panel and RotaCore.Options.panel.buildDropDown then
-        if _G.UIDropDownMenu_SetSelectedValue then
-            _G.UIDropDownMenu_SetSelectedValue(RotaCore.Options.panel.buildDropDown, nextBuild)
-        end
+    local optPanel = RotaCore.Options and RotaCore.Options.panel
+    if optPanel and optPanel.RefreshBuild then
+        optPanel.RefreshBuild()                -- desplegable de Opciones: misma build que la barra
+        RotaCore.Options.RefreshStatus()
     end
     UI:UpdateButtonStates()
     if _G.DEFAULT_CHAT_FRAME and _G.DEFAULT_CHAT_FRAME.AddMessage then
@@ -741,6 +741,10 @@ function UI:Init()
             if _G.GameTooltip then
                 _G.GameTooltip:SetOwner(btn, "ANCHOR_TOP")
                 _G.GameTooltip:AddLine("|cFFFFFF00Build de Rotación|r", 1, 1, 1)
+                local act = RotaCore.Profiles and RotaCore.Profiles:GetActiveProfile()
+                if act and act.meta and act.meta.name then
+                    _G.GameTooltip:AddLine("Rotación activa: " .. act.meta.name, 1, 1, 1)
+                end
                 local playerClass = "DEATHKNIGHT"
                 if _G.UnitClass then
                     local _, cls = _G.UnitClass("player")

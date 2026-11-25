@@ -48,7 +48,9 @@ Fuente de las rotaciones: guías de Wowhead WotLK más los cambios del servidor 
 | Cazador | Beast Mastery, Marksmanship, Survival |
 | Druida | Balance, Feral |
 
-La build se elige en Opciones o con AUTO, que la detecta por talentos. Se guarda por personaje.
+La build se elige en Opciones o en la mini-barra (es la misma), o con AUTO, que la detecta por talentos. Se guarda
+por personaje. Al entrar al juego los talentos pueden tardar en cargar: mientras tanto AUTO deja la última build
+usada y vuelve a mirar cada segundo, y el aviso de talentos faltantes espera.
 
 DK y Paladín se juegan en el servidor. El resto de las clases sigue las guías y pasa las pruebas offline, pero
 **falta feedback de gente que las juegue**: ver README.
@@ -66,7 +68,7 @@ DK y Paladín se juegan en el servidor. El resto de las clases sigue las guías 
 
 Todo se verifica offline, sin el juego (el CI de GitHub lo corre en cada PR):
 
-- `lua5.1 tools/test_runner.lua`: 973 tests.
+- `lua5.1 tools/test_runner.lua`: 985 tests.
 - `lua5.1 tools/golden.lua check`: cada build se compara con su referencia (200 situaciones: un tercio de un
   objetivo, un tercio con 2 enemigos y un tercio AoE) y se mide que no cree basura en memoria a 20 evaluaciones por
   segundo.

@@ -389,6 +389,8 @@ local function HandleSlashCmd(msg)
             if RotaCore.UI and RotaCore.UI.UpdateButtonStates then
                 RotaCore.UI:UpdateButtonStates()
             end
+            local optPanel = RotaCore.Options and RotaCore.Options.panel
+            if optPanel and optPanel.RefreshBuild then optPanel.RefreshBuild() end
             if _G.DEFAULT_CHAT_FRAME and _G.DEFAULT_CHAT_FRAME.AddMessage then
                 local bName = _G.RotaCoreDB.settings.selectedBuild or "auto"
                 _G.DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00[RotaCore]|r Build " .. playerClass .. " configurada en: " .. bName)
@@ -1058,6 +1060,9 @@ local function CheckRequires(ir, state)
     local meta = ir and ir.meta
     local id = meta and (meta.v1Of or meta.id)
     if not id or warnedRequires[id] or not meta.requires or state.inCombat ~= true then return end
+    -- Sin talentos cargados (0 puntos al loguear) todo "falta": avisar despues, no ahora
+    local tab = _G.GetTalentTabInfo
+    if tab and (select(3, tab(1)) or 0) + (select(3, tab(2)) or 0) + (select(3, tab(3)) or 0) == 0 then return end
     warnedRequires[id] = true
     local missing = nil
     for _, alias in ipairs(meta.requires) do

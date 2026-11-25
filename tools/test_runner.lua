@@ -5118,6 +5118,89 @@ end
 SuitePrepullGlyphs()
 
 -- ----------------------------------------------------------------------------
+-- DK AUTO al loguear: el cliente da 0 puntos de talento hasta que cargan
+-- ----------------------------------------------------------------------------
+local function SuiteDKLoginDetect()
+    print("\n[Suite] DK AUTO con talentos sin cargar")
+    wowmock.setClass("Death Knight", "DEATHKNIGHT")
+    local dk = _G.RotaClass_DK
+    local oldTabs, oldKnown = wowmock.talents.tabs, wowmock.spellbook.knownSpells
+    local morbTabs = {
+        [1] = { name = "Blood", pointsSpent = 0, talents = {} },
+        [2] = { name = "Frost", pointsSpent = 17, talents = {
+            { name = "Nerves of Cold Steel", rank = 3, maxRank = 3 } } },
+        [3] = { name = "Unholy", pointsSpent = 54, talents = {
+            { name = "Desolation", rank = 5, maxRank = 5 } } },
+    }
+    local none = { { name = "Nerves of Cold Steel", rank = 0, maxRank = 3 } }  -- talentos con rango 0: sin cargar
+    local emptyTabs = {
+        [1] = { name = "Blood", pointsSpent = 0, talents = none },
+        [2] = { name = "Frost", pointsSpent = 0, talents = none },
+        [3] = { name = "Unholy", pointsSpent = 0, talents = none },
+    }
+    local function active() local p = RotaCore.Profiles:GetActiveProfile(); return p and p.meta.id end
+    wowmock.spellbook.knownSpells = {}
+    SetBuild("auto")
+
+    -- Sesion anterior quedo en Morb; al loguear todavia no hay talentos
+    RotaCore.Profiles:SetActiveProfile("dk_unholy_morb_pve")
+    wowmock.talents.tabs = emptyTabs
+    RotaCore.State:ScanTalentsAndGlyphs()  -- refresca el estado y llama a DetectBuild, como en el juego
+    Assert(active() == "dk_unholy_morb_pve", "AUTO sin talentos: no cambia Morb por la adivinanza 2H")
+    Assert(dk.talentsPending == true, "AUTO sin talentos: queda pendiente de reintento")
+
+    -- Sin build activa de dk: usa la guardada del personaje
+    RotaCore.Profiles.activeProfile = nil
+    _G.RotaCoreDB.charProfiles[RotaCore:GetCharKey()] = "dk_unholy_dw_ss_pve"
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(active() == "dk_unholy_dw_ss_pve", "AUTO sin talentos: usa la build guardada del personaje")
+
+    -- El reintento (OnUpdate cada 1 s) lee los talentos cuando llegan
+    wowmock.talents.tabs = morbTabs
+    local onUpdate = dk.eventFrame:GetScript("OnUpdate")
+    onUpdate(dk.eventFrame, 0.5)
+    Assert(active() == "dk_unholy_dw_ss_pve", "Reintento: espera 1 s entre intentos")
+    onUpdate(dk.eventFrame, 0.6)
+    Assert(active() == "dk_unholy_morb_pve" and not dk.talentsPending, "Reintento: con talentos cargados detecta Morb")
+
+    -- La eleccion manual gana aunque no haya talentos
+    wowmock.talents.tabs = emptyTabs
+    SetBuild("unholy_2h")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(active() == "dk_unholy_2h_pve", "Manual UH (2H) sin talentos: respeta la eleccion")
+    SetBuild("unholy_morb")
+    RotaCore.State:ScanTalentsAndGlyphs()
+    Assert(active() == "dk_unholy_morb_pve", "Manual UH Morb sin talentos: respeta la eleccion")
+
+    -- Sin talentos cargados no avisa "te falta Scourge Strike" (y avisa despues, con talentos)
+    local said, add0 = {}, _G.DEFAULT_CHAT_FRAME.AddMessage
+    _G.DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said[#said + 1] = msg end
+    local ir = RotaCore.Profiles.presets["dk_unholy_2h_pve"]
+    local fake = { inCombat = true, hasSpell = function() return false end }
+    RotaCore.CheckRequires(ir, fake)
+    Assert(#said == 0, "Aviso de talentos: callado mientras los talentos no cargaron")
+    wowmock.talents.tabs = morbTabs
+    RotaCore.CheckRequires(ir, fake)
+    Assert(#said == 1, "Aviso de talentos: con talentos cargados si avisa")
+    _G.DEFAULT_CHAT_FRAME.AddMessage = add0
+
+    -- La barra del HUD y el desplegable de Opciones muestran la misma build
+    local dd = RotaCore.Options.panel.buildDropDown
+    SetBuild("auto")
+    RotaCore.UI:CycleBuild()
+    Assert(RotaCore:GetSelectedBuild() == "frost" and dd.selectedValue == "frost", "Barra -> desplegable: mismo valor")
+    Assert(dd.text == nil or dd.text:GetText() == "Frost", "Barra -> desplegable: mismo texto")
+    SetBuild("unholy_morb")
+    RotaCore.Options.panel:GetScript("OnShow")(RotaCore.Options.panel)
+    Assert(dd.selectedValue == "unholy_morb", "Abrir Opciones: el desplegable toma la build guardada")
+
+    SetBuild("auto")
+    dk.talentsPending = false
+    wowmock.talents.tabs, wowmock.spellbook.knownSpells = oldTabs, oldKnown
+end
+SuiteDKLoginDetect()
+
+-- ----------------------------------------------------------------------------
 -- Brujo Affliction: proyeccion de casteo, tiempo real con celeridad y lookahead
 -- ----------------------------------------------------------------------------
 local function SuiteAfflictionLookahead()
